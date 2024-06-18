@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  extension_ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: "recursive"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Node Dependencies
+        run: yarn
+
+      - name: Lint Check
+        run: yarn lint
+
+      - name: Package .vsix
+        run: yarn package
+
+      - name: Upload .vsix File
+        uses: actions/upload-artifact@v1
+        with:
+          name: esp-idf-web-extension.vsix
+          path: esp-idf-web-extension.vsix

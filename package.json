@@ -1,0 +1,103 @@
+{
+  "name": "esp-idf-web",
+  "displayName": "ESP-IDF WEB",
+  "description": "Espressif ESP-IDF Web extension for Webserial communication",
+  "version": "0.0.1",
+  "license": "Apache-2.0",
+  "publisher": "espressif",
+  "icon": "media/espressif_icon.png",
+  "galleryBanner": {
+    "color": "#636363",
+    "theme": "dark"
+  },
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/espressif/vscode-esp-idf-web-extension.git"
+  },
+  "bugs": {
+    "url": "https://github.com/espressif/vscode-esp-idf-web-extension/issues"
+  },
+  "categories": [
+    "Snippets",
+    "Other"
+  ],
+  "keywords": [
+    "arduino-esp32",
+    "bluetooth",
+    "ESP-IDF",
+    "ESP-matter",
+    "ESP",
+    "Espressif",
+    "ESP32",
+    "ESP32-C2",
+    "ESP32-C3",
+    "ESP32-H2",
+    "ESP32-P4",
+    "ESP32-S2",
+    "ESP32-S3",
+    "esp32",
+    "esp32c2",
+    "esp32c3",
+    "esp32c6",
+    "esp32h2",
+    "esp32s2",
+    "esp32s3",
+    "esp32p4",
+    "matter",
+    "iot",
+    "wifi",
+    "soc"
+  ],
+  "activationEvents": [],
+  "browser": "./dist/web/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "esp-idf-web.flash",
+        "title": "ESP-IDF-Web Flash"
+      },
+      {
+        "command": "esp-idf-web.monitor",
+        "title": "ESP-IDF-Web Monitor"
+      }
+    ]
+  },
+  "scripts": {
+    "test": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. --extensionTestsPath=dist/web/test/suite/index.js",
+    "pretest": "yarn run compile-web",
+    "vscode:prepublish": "yarn run package-web",
+    "compile-web": "webpack",
+    "watch-web": "webpack --watch",
+    "package-web": "webpack --mode production --devtool hidden-source-map",
+    "lint": "eslint src --ext ts",
+    "run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
+    "package": "vsce package --yarn -o esp-idf-web-extension.vsix"
+  },
+  "devDependencies": {
+    "@types/assert": "^1.5.10",
+    "@types/crypto-js": "^4.2.2",
+    "@types/mocha": "^10.0.6",
+    "@types/vscode": "^1.90.0",
+    "@types/w3c-web-serial": "^1.0.6",
+    "@types/webpack-env": "^1.18.5",
+    "@typescript-eslint/eslint-plugin": "^7.11.0",
+    "@typescript-eslint/parser": "^7.11.0",
+    "@vscode/test-web": "^0.0.54",
+    "assert": "^2.1.0",
+    "eslint": "^8.57.0",
+    "mocha": "^10.4.0",
+    "process": "^0.11.10",
+    "ts-loader": "^9.5.1",
+    "typescript": "^5.4.5",
+    "vsce": "^2.15.0",
+    "webpack": "^5.92.0",
+    "webpack-cli": "^5.1.4"
+  },
+  "dependencies": {
+    "crypto-js": "^4.2.0",
+    "esptool-js": "^0.4.3"
+  }
+}
