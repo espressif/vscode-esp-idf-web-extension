@@ -18,6 +18,7 @@
 
 import {
   CancellationToken,
+  FileType,
   Progress,
   ProgressLocation,
   Uri,
@@ -33,6 +34,8 @@ import {
   Transport,
 } from "esptool-js";
 import { enc, MD5 } from "crypto-js";
+import { uInt8ArrayToString } from "./utils";
+import { SerialTerminal } from "./serialPseudoTerminal";
 
 export interface PartitionInfo {
   name: string;
@@ -54,32 +57,52 @@ export async function monitorWithWebserial() {
   if (!portInfo) {
     return;
   }
-  let port = await navigator.serial.requestPort();
+  const ports = await navigator.serial.getPorts();
+  let port = ports.find((item) => {
+    const info = item.getInfo();
+    return (
+      info.usbVendorId === portInfo.usbVendorId &&
+      info.usbProductId === portInfo.usbProductId
+    );
+  });
   if (!port) {
+    return;
+  }
+  const monitorBaudRate = await window.showQuickPick(
+    [
+      { description: "74880", label: "74880", target: 74880 },
+      { description: "115200", label: "115200", target: 115200 },
+    ],
+    { placeHolder: "Select baud rate" }
+  );
+  if (!monitorBaudRate) {
     return;
   }
   const transport = new Transport(port);
   await transport.connect();
 
-  let idfTerminal = window.createTerminal("ESP-IDF Web Monitor");
+  const serialTerminal = new SerialTerminal(transport, {
+    baudRate: monitorBaudRate.target,
+  });
 
-  window.onDidCloseTerminal(async (t) => {
-    if (t.name === "ESP-IDF Web Monitor" && t.exitStatus && t.exitStatus.code) {
-      window.showInformationMessage(`Exit code: ${t.exitStatus.code}`);
-      await transport.disconnect();
+  let idfTerminal = window.createTerminal({
+    name: "ESP-IDF Web Monitor",
+    pty: serialTerminal,
+  });
+
+  serialTerminal.onDidClose((e) => {
+    if (idfTerminal && idfTerminal.exitStatus === undefined) {
+      idfTerminal.dispose();
     }
   });
 
-  while (!idfTerminal.exitStatus) {
-    let val = await transport.rawRead();
-    if (typeof val !== "undefined") {
-      let valStr = uInt8ArrayToString(val);
-      idfTerminal.sendText(valStr);
-    } else {
-      break;
+  window.onDidCloseTerminal(async (t) => {
+    if (t.name === "ESP-IDF Web Monitor" && t.exitStatus) {
+      await transport.disconnect();
+      port = undefined;
     }
-  }
-  await transport.waitForUnlock(1500);
+  });
+  idfTerminal.show();
 }
 
 export async function flashWithWebSerial(workspace: Uri) {
@@ -133,7 +156,6 @@ export async function flashWithWebSerial(workspace: Uri) {
 
         const flashBaudRate = await window.showQuickPick(
           [
-            { description: "115200", label: "115200", target: 115200 },
             { description: "115200", label: "115200", target: 115200 },
             { description: "230400", label: "230400", target: 230400 },
             { description: "460800", label: "460800", target: 460800 },
@@ -199,6 +221,10 @@ async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) {
     "build",
     "flasher_args.json"
   );
+  const flasherArgsStat = await workspace.fs.stat(flashInfoFileName);
+  if (flasherArgsStat.type !== FileType.File) {
+    throw new Error(`${flashInfoFileName} does not exists.`);
+  }
   const flasherArgsContent = await workspace.fs.readFile(flashInfoFileName);
   if (!flasherArgsContent) {
     throw new Error("Build before flashing");
@@ -235,12 +261,3 @@ async function readFileIntoBuffer(filePath: Uri, name: string, offset: string) {
   };
   return fileBufferResult;
 }
-
-function uInt8ArrayToString(fileBuffer: Uint8Array) {
-  let fileBufferString = "";
-  for (let i = 0; i < fileBuffer.length; i++) {
-    fileBufferString += String.fromCharCode(fileBuffer[i]);
-  }
-  return fileBufferString;
-}
-
