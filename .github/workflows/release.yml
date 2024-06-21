@@ -1,0 +1,71 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  build:
+    name: Upload .vsix in release asset
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+        with:
+          submodules: "recursive"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ESP IDF Web VSCode Extension Release ${{ github.ref }}
+          draft: true
+          body: |
+            ### Release Highlights
+
+            ### Features & Enhancements
+
+            <!-- Insert The Features and Enhancements below as points possibly add the link to the PR/commit -->
+
+            ### Bug Fixes
+
+            <!-- Insert The Bug Fixes below as points, also add relevant links -->
+
+      - name: Determine version
+        id: version
+        run: echo "version=${GITHUB_REF:11}" >> $GITHUB_OUTPUT
+
+      - name: VSIX Package
+        run: yarn run package
+
+      - name: Upload Release Asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./esp-idf-web-extension.vsix
+          asset_name: esp-idf-web-extension-${{ steps.version.outputs.version }}.vsix
+          asset_content_type: application/zip
+
+      - name: Marketplace release
+        run: yarn run release
+        env:
+          VS_MARKETPLACE_TOKEN: ${{ secrets.VS_MARKETPLACE_TOKEN }}
+
+      - name: OpenVSX release
+        run: yarn run open-vsx-release
+        env:
+          OPENVSX_MARKETPLACE_TOKEN: ${{ secrets.OPENVSX_MARKETPLACE_TOKEN }}

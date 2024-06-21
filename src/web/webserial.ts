@@ -206,6 +206,12 @@ export async function flashWithWebSerial(workspace: Uri) {
         await esploader.writeFlash(flashOptions);
         progress.report({ message: `ESP-IDF Web Flashing done` });
         outputChnl.appendLine(`ESP-IDF Web Flashing done`);
+        if (transport) {
+          await transport.disconnect();
+        }
+        if (port) {
+          port = undefined;
+        }
       }
     );
   } catch (error: any) {
@@ -233,7 +239,7 @@ async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) {
   const flashFileJson = JSON.parse(flasherArgsContentStr);
   const binPromises: Promise<PartitionInfo>[] = [];
   Object.keys(flashFileJson["flash_files"]).forEach((offset) => {
-    const fileName = flashFileJson["flash_files"][offset].name;
+    const fileName = flashFileJson["flash_files"][offset];
     const filePath = Uri.joinPath(
       workspaceFolder,
       "build",

@@ -40,6 +40,8 @@ export class SerialTerminal implements Pseudoterminal {
   public async open(
     _initialDimensions: TerminalDimensions | undefined
   ): Promise<void> {
+    await this.transport.sleep(500);
+    await this.reset();
     while (!this.closed) {
       let val = await this.transport.rawRead();
       if (typeof val !== "undefined") {
@@ -52,8 +54,6 @@ export class SerialTerminal implements Pseudoterminal {
 
     this.transport.connect(this.options.baudRate, this.options);
     this.writeLine(`Opened with baud rate: ${this.options.baudRate}`);
-    await this.transport.sleep(500);
-    await this.reset();
   }
 
   public async reset() {
