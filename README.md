@@ -4,7 +4,7 @@ Web extension of ESP-IDF for serial communication.
 
 ## Features
 
-Allow the user to flas and monitor with ESP-IDF Webserial esptool-js.
+Allow the user to flash and monitor with ESP-IDF Webserial esptool-js.
 
 `ESP-IDF-Web Flash`: Command to flash binaries from selected workspace to selected serial port.
 
