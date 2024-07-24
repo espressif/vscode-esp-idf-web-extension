@@ -22,7 +22,6 @@ import {
   Progress,
   ProgressLocation,
   Uri,
-  commands,
   window,
   workspace,
 } from "vscode";

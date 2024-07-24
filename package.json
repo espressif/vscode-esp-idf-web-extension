@@ -82,7 +82,7 @@
               921600
             ],
             "description": "Baud rate for flash command",
-            "scope": "machine"
+            "scope": "window"
           }
         }
       }

@@ -19,15 +19,20 @@
 import * as vscode from "vscode";
 import { flashWithWebSerial, monitorWithWebserial } from "./webserial";
 
+let port: SerialPort | undefined;
+
 export function activate(context: vscode.ExtensionContext) {
-  // let port: SerialPort | undefined;
   const flashDisposable = vscode.commands.registerCommand(
     "esp-idf-web.flash",
     async () => {
-      let workspaceFolder = await vscode.window.showWorkspaceFolderPick({
-        placeHolder: `Pick Workspace Folder to load binaries to flash`,
-      });
-      let port = await getSerialPort();
+      let workspaceFolder = await getWorkspaceFolder();
+      if (!workspaceFolder) {
+        return;
+      }
+      if (typeof port !== undefined) {
+        port = undefined;
+      }
+      port = await getSerialPort();
       if (workspaceFolder && port) {
         flashWithWebSerial(workspaceFolder.uri, port);
       }
@@ -39,10 +44,14 @@ export function activate(context: vscode.ExtensionContext) {
   const monitorDisposable = vscode.commands.registerCommand(
     "esp-idf-web.monitor",
     async () => {
-      let workspaceFolder = await vscode.window.showWorkspaceFolderPick({
-        placeHolder: `Pick Workspace Folder to start ESP-IDF monitor`,
-      });
-      let port = await getSerialPort();
+      let workspaceFolder = await getWorkspaceFolder();
+      if (!workspaceFolder) {
+        return;
+      }
+      if (typeof port !== undefined) {
+        port = undefined;
+      }
+      port = await getSerialPort();
       if (workspaceFolder && port) {
         await monitorWithWebserial(workspaceFolder.uri, port);
       }
@@ -53,14 +62,32 @@ export function activate(context: vscode.ExtensionContext) {
   const disposePort = vscode.commands.registerCommand(
     "esp-idf-web.disposePort",
     async () => {
-      // port = undefined;
+      port = undefined;
     }
   );
   context.subscriptions.push(disposePort);
 }
 
 // This method is called when your extension is deactivated
-export function deactivate() {}
+export function deactivate() {
+  port = undefined;
+}
+
+async function getWorkspaceFolder() {
+  if (!vscode.workspace.workspaceFolders) {
+    vscode.window.showInformationMessage("No workspace folder opened. Open a folder first.");
+    return;
+  }
+  let workspaceFolder;
+  if (vscode.workspace.workspaceFolders.length === 1) {
+    workspaceFolder = vscode.workspace.workspaceFolders[0];
+  } else {
+    workspaceFolder = await vscode.window.showWorkspaceFolderPick({
+      placeHolder: `Pick Workspace Folder to use`,
+    });
+  }
+  return workspaceFolder;
+}
 
 async function getSerialPort() {
   const portInfo = (await vscode.commands.executeCommand(
