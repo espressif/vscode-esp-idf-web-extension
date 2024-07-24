@@ -50,31 +50,14 @@ export interface FlashSectionMessage {
   flashFreq: string;
 }
 
-export async function monitorWithWebserial() {
-  const portInfo = (await commands.executeCommand(
-    "workbench.experimental.requestSerialPort"
-  )) as SerialPortInfo;
-  if (!portInfo) {
-    return;
-  }
-  const ports = await navigator.serial.getPorts();
-  let port = ports.find((item) => {
-    const info = item.getInfo();
-    return (
-      info.usbVendorId === portInfo.usbVendorId &&
-      info.usbProductId === portInfo.usbProductId
-    );
-  });
+export async function monitorWithWebserial(
+  workspaceFolder: Uri,
+  port: SerialPort
+) {
   if (!port) {
     return;
   }
-  const monitorBaudRate = await window.showQuickPick(
-    [
-      { description: "74880", label: "74880", target: 74880 },
-      { description: "115200", label: "115200", target: 115200 },
-    ],
-    { placeHolder: "Select baud rate" }
-  );
+  const monitorBaudRate = await getMonitorBaudRate(workspaceFolder);
   if (!monitorBaudRate) {
     return;
   }
@@ -82,7 +65,7 @@ export async function monitorWithWebserial() {
   await transport.connect();
 
   const serialTerminal = new SerialTerminal(transport, {
-    baudRate: monitorBaudRate.target,
+    baudRate: monitorBaudRate,
   });
 
   let idfTerminal = window.createTerminal({
@@ -99,13 +82,15 @@ export async function monitorWithWebserial() {
   window.onDidCloseTerminal(async (t) => {
     if (t.name === "ESP-IDF Web Monitor" && t.exitStatus) {
       await transport.disconnect();
-      port = undefined;
     }
   });
   idfTerminal.show();
 }
 
-export async function flashWithWebSerial(workspace: Uri) {
+export async function flashWithWebSerial(
+  workspaceFolder: Uri,
+  port: SerialPort
+) {
   try {
     window.withProgress(
       {
@@ -119,23 +104,6 @@ export async function flashWithWebSerial(workspace: Uri) {
         }>,
         cancelToken: CancellationToken
       ) => {
-        const portInfo = (await commands.executeCommand(
-          "workbench.experimental.requestSerialPort"
-        )) as SerialPortInfo;
-        if (!portInfo) {
-          return;
-        }
-        const ports = await navigator.serial.getPorts();
-        let port = ports.find((item) => {
-          const info = item.getInfo();
-          return (
-            info.usbVendorId === portInfo.usbVendorId &&
-            info.usbProductId === portInfo.usbProductId
-          );
-        });
-        if (!port) {
-          return;
-        }
         const transport = new Transport(port);
         const outputChnl = window.createOutputChannel("ESP-IDF Web");
         const clean = () => {
@@ -153,35 +121,28 @@ export async function flashWithWebSerial(workspace: Uri) {
           write,
           writeLine,
         };
-
-        const flashBaudRate = await window.showQuickPick(
-          [
-            { description: "115200", label: "115200", target: 115200 },
-            { description: "230400", label: "230400", target: 230400 },
-            { description: "460800", label: "460800", target: 460800 },
-            { description: "921600", label: "921600", target: 921600 },
-          ],
-          { placeHolder: "Select baud rate" }
-        );
+        const flashBaudRate = await workspace
+          .getConfiguration("")
+          .get("idf-web.flashBaudRate");
         if (!flashBaudRate) {
           return;
         }
         const loaderOptions = {
           transport,
-          baudrate: flashBaudRate.target,
+          baudrate: flashBaudRate,
           terminal: loaderTerminal,
         } as LoaderOptions;
         progress.report({
-          message: `ESP-IDF Web Flashing using baud rate ${flashBaudRate.target}`,
+          message: `ESP-IDF Web Flashing using baud rate ${flashBaudRate}`,
         });
         outputChnl.appendLine(
-          `ESP-IDF Web Flashing with Webserial using baud rate ${flashBaudRate.target}`
+          `ESP-IDF Web Flashing with Webserial using baud rate ${flashBaudRate}`
         );
         outputChnl.show();
         const esploader = new ESPLoader(loaderOptions);
         const chip = await esploader.main();
         const flashSectionsMessage = await getFlashSectionsForCurrentWorkspace(
-          workspace
+          workspaceFolder
         );
         const flashOptions: FlashOptions = {
           fileArray: flashSectionsMessage.sections,
@@ -209,9 +170,6 @@ export async function flashWithWebSerial(workspace: Uri) {
         if (transport) {
           await transport.disconnect();
         }
-        if (port) {
-          port = undefined;
-        }
       }
     );
   } catch (error: any) {
@@ -219,6 +177,27 @@ export async function flashWithWebSerial(workspace: Uri) {
     const errMsg = error && error.message ? error.message : error;
     outputChnl.appendLine(errMsg);
   }
+}
+
+async function getMonitorBaudRate(workspaceFolder: Uri) {
+  const projDescFilePath = Uri.joinPath(
+    workspaceFolder,
+    "build",
+    "project_description.json"
+  );
+  const projDescStat = await workspace.fs.stat(projDescFilePath);
+  if (projDescStat.type !== FileType.File) {
+    throw new Error(`${projDescFilePath} does not exists.`);
+  }
+  const projDescContent = await workspace.fs.readFile(projDescFilePath);
+  if (!projDescContent) {
+    throw new Error("Build before monitor");
+  }
+  let projDescContentStr = uInt8ArrayToString(projDescContent);
+  const projDescFileJson = JSON.parse(projDescContentStr);
+  const monitorBaudRateStr = projDescFileJson["monitor_baud"];
+  const monitorBaudRateNum = parseInt(monitorBaudRateStr);
+  return monitorBaudRateNum;
 }
 
 async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) {

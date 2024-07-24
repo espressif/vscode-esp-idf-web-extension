@@ -62,6 +62,29 @@
       {
         "command": "esp-idf-web.monitor",
         "title": "ESP-IDF-Web Monitor"
+      },
+      {
+        "command": "esp-idf-web.disposePort",
+        "title": "ESP-IDF-Web Disconnect serial port"
+      }
+    ],
+    "configuration": [
+      {
+        "title": "ESP-IDF Web",
+        "properties": {
+          "idf-web.flashBaudRate": {
+            "type": "number",
+            "default": 921600,
+            "enum": [
+              115200,
+              230400,
+              460800,
+              921600
+            ],
+            "description": "Baud rate for flash command",
+            "scope": "machine"
+          }
+        }
       }
     ]
   },
@@ -73,7 +96,7 @@
     "watch-web": "webpack --watch",
     "package-web": "webpack --mode production --devtool hidden-source-map",
     "lint": "eslint src --ext ts",
-    "run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
+    "run-in-browser": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. /Users/brainignacio/workspace/test/v52/blink",
     "package": "vsce package --yarn -o esp-idf-web-extension.vsix"
   },
   "devDependencies": {
@@ -98,6 +121,6 @@
   },
   "dependencies": {
     "crypto-js": "^4.2.0",
-    "esptool-js": "^0.4.3"
+    "esptool-js": "^0.4.5"
   }
 }
