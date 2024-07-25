@@ -56,53 +56,62 @@ export async function monitorWithWebserial(
   if (!port) {
     return;
   }
-  const monitorBaudRate = await getMonitorBaudRate(workspaceFolder);
-  if (!monitorBaudRate) {
-    return;
+  try {
+    const monitorBaudRate = await getMonitorBaudRate(workspaceFolder);
+    if (!monitorBaudRate) {
+      return;
+    }
+    const transport = new Transport(port);
+    await transport.connect();
+
+    const serialTerminal = new SerialTerminal(transport, {
+      baudRate: monitorBaudRate,
+    });
+
+    let idfTerminal = window.createTerminal({
+      name: "ESP-IDF Web Monitor",
+      pty: serialTerminal,
+    });
+
+    serialTerminal.onDidClose((e) => {
+      if (idfTerminal && idfTerminal.exitStatus === undefined) {
+        idfTerminal.dispose();
+      }
+    });
+
+    window.onDidCloseTerminal(async (t) => {
+      if (t.name === "ESP-IDF Web Monitor" && t.exitStatus) {
+        await transport.disconnect();
+      }
+    });
+    idfTerminal.show();
+    return idfTerminal;
+  } catch (error: any) {
+    const outputChnl = window.createOutputChannel("ESP-IDF Web");
+    outputChnl.appendLine(JSON.stringify(error));
+    const errMsg = error && error.message ? error.message : error;
+    outputChnl.appendLine(errMsg);
+    outputChnl.show();
   }
-  const transport = new Transport(port);
-  await transport.connect();
-
-  const serialTerminal = new SerialTerminal(transport, {
-    baudRate: monitorBaudRate,
-  });
-
-  let idfTerminal = window.createTerminal({
-    name: "ESP-IDF Web Monitor",
-    pty: serialTerminal,
-  });
-
-  serialTerminal.onDidClose((e) => {
-    if (idfTerminal && idfTerminal.exitStatus === undefined) {
-      idfTerminal.dispose();
-    }
-  });
-
-  window.onDidCloseTerminal(async (t) => {
-    if (t.name === "ESP-IDF Web Monitor" && t.exitStatus) {
-      await transport.disconnect();
-    }
-  });
-  idfTerminal.show();
 }
 
 export async function flashWithWebSerial(
   workspaceFolder: Uri,
   port: SerialPort
 ) {
-  try {
-    window.withProgress(
-      {
-        cancellable: true,
-        location: ProgressLocation.Notification,
-        title: "Flashing with WebSerial...",
-      },
-      async (
-        progress: Progress<{
-          message: string;
-        }>,
-        cancelToken: CancellationToken
-      ) => {
+  window.withProgress(
+    {
+      cancellable: true,
+      location: ProgressLocation.Notification,
+      title: "Flashing with WebSerial...",
+    },
+    async (
+      progress: Progress<{
+        message: string;
+      }>,
+      cancelToken: CancellationToken
+    ) => {
+      try {
         const transport = new Transport(port);
         const outputChnl = window.createOutputChannel("ESP-IDF Web");
         const clean = () => {
@@ -169,13 +178,15 @@ export async function flashWithWebSerial(
         if (transport) {
           await transport.disconnect();
         }
+      } catch (error: any) {
+        const outputChnl = window.createOutputChannel("ESP-IDF Web");
+        outputChnl.appendLine(JSON.stringify(error));
+        const errMsg = error && error.message ? error.message : error;
+        outputChnl.appendLine(errMsg);
+        outputChnl.show();
       }
-    );
-  } catch (error: any) {
-    const outputChnl = window.createOutputChannel("ESP-IDF Web");
-    const errMsg = error && error.message ? error.message : error;
-    outputChnl.appendLine(errMsg);
-  }
+    }
+  );
 }
 
 async function getMonitorBaudRate(workspaceFolder: Uri) {
