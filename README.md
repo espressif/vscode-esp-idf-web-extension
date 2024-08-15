@@ -8,7 +8,9 @@ Allow the user to flash and monitor with ESP-IDF Webserial esptool-js.
 
 `ESP-IDF-Web Flash`: Command to flash binaries from selected workspace to selected serial port.
 
-`ESP-IDF-Web Monitor`: Command to start a serial monitor terminal to selected serial port. (It requires)
+`ESP-IDF-Web Monitor`: Command to start a serial monitor terminal to selected serial port.
+
+`ESP-IDF-Web Disconnect serial port`: Command to dispose of SerialPort object if it exist. For those cases where serial port is not connected or disconnected properly.
 
 ## Test the extension
 

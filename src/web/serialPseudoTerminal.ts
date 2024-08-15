@@ -74,8 +74,10 @@ export class SerialTerminal implements Pseudoterminal {
   }
 
   public handleInput(data: string): void {
-    this.writeLine("Input data is:");
-    this.writeOutput(data);
+    // CTRL + ] signal to close IDF Monitor
+    if (data === "\u001D") {
+      this.closeEmitter.fire(0);
+    }
   }
 
   protected writeLine(message: string): void {
