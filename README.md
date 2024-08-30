@@ -12,6 +12,14 @@ Allow the user to flash and monitor with ESP-IDF Webserial esptool-js.
 
 `ESP-IDF-Web Disconnect serial port`: Command to dispose of SerialPort object if it exist. For those cases where serial port is not connected or disconnected properly.
 
+> **NOTE:** The `ESP-IDF-Web Flash` command will use `flasher_args.json` and the `ESP-IDF-Web Monitor` command will use `project_description.json` from ESP-IDF project build directory, where the build directory is `idf.buildPath` from [ESP-IDF extension VS Code](https://marketplace.visualstudio.com/items?itemName=espressif.esp-idf-extension) configuration setting or it will use the selected workspace folder `build` otherwise.
+
+## Settings
+
+`idf-web.flashBaudRate`: Allow the user to set the flash baudrate being used to flash the current workspace folder ESP-IDF project application to your device.
+
+For IDF Monitor, the baud rate used is determined from build directory `project_description.json` field called `monitor_baud`.
+
 ## Test the extension
 
 Run `yarn` to install dependencies

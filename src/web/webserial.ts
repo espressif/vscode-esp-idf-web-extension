@@ -33,7 +33,11 @@ import {
   Transport,
 } from "esptool-js";
 import { enc, MD5 } from "crypto-js";
-import { uInt8ArrayToString } from "./utils";
+import {
+  getBuildDirectoryFileContent,
+  resolveVariables,
+  uInt8ArrayToString,
+} from "./utils";
 import { SerialTerminal } from "./serialPseudoTerminal";
 
 export interface PartitionInfo {
@@ -190,20 +194,10 @@ export async function flashWithWebSerial(
 }
 
 async function getMonitorBaudRate(workspaceFolder: Uri) {
-  const projDescFilePath = Uri.joinPath(
+  const projDescContentStr = await getBuildDirectoryFileContent(
     workspaceFolder,
-    "build",
     "project_description.json"
   );
-  const projDescStat = await workspace.fs.stat(projDescFilePath);
-  if (projDescStat.type !== FileType.File) {
-    throw new Error(`${projDescFilePath} does not exists.`);
-  }
-  const projDescContent = await workspace.fs.readFile(projDescFilePath);
-  if (!projDescContent) {
-    throw new Error("Build before monitor");
-  }
-  let projDescContentStr = uInt8ArrayToString(projDescContent);
   const projDescFileJson = JSON.parse(projDescContentStr);
   const monitorBaudRateStr = projDescFileJson["monitor_baud"];
   const monitorBaudRateNum = parseInt(monitorBaudRateStr);
@@ -211,20 +205,10 @@ async function getMonitorBaudRate(workspaceFolder: Uri) {
 }
 
 async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) {
-  const flashInfoFileName = Uri.joinPath(
+  const flasherArgsContentStr = await getBuildDirectoryFileContent(
     workspaceFolder,
-    "build",
     "flasher_args.json"
   );
-  const flasherArgsStat = await workspace.fs.stat(flashInfoFileName);
-  if (flasherArgsStat.type !== FileType.File) {
-    throw new Error(`${flashInfoFileName} does not exists.`);
-  }
-  const flasherArgsContent = await workspace.fs.readFile(flashInfoFileName);
-  if (!flasherArgsContent) {
-    throw new Error("Build before flashing");
-  }
-  let flasherArgsContentStr = uInt8ArrayToString(flasherArgsContent);
   const flashFileJson = JSON.parse(flasherArgsContentStr);
   const binPromises: Promise<PartitionInfo>[] = [];
   Object.keys(flashFileJson["flash_files"]).forEach((offset) => {
