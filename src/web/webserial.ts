@@ -18,7 +18,6 @@
 
 import {
   CancellationToken,
-  FileType,
   Progress,
   ProgressLocation,
   Uri,
@@ -33,10 +32,7 @@ import {
   Transport,
 } from "esptool-js";
 import { enc, MD5 } from "crypto-js";
-import {
-  getBuildDirectoryFileContent,
-  uInt8ArrayToString,
-} from "./utils";
+import { getBuildDirectoryFileContent } from "./utils";
 import { SerialTerminal } from "./serialPseudoTerminal";
 
 export interface PartitionInfo {
@@ -224,8 +220,15 @@ async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) {
   return message;
 }
 
-async function readFileIntoBuffer(workspaceFolder: Uri, name: string, offset: string) {
-  const fileBufferString = await getBuildDirectoryFileContent(workspaceFolder, name);
+async function readFileIntoBuffer(
+  workspaceFolder: Uri,
+  name: string,
+  offset: string
+) {
+  const fileBufferString = await getBuildDirectoryFileContent(
+    workspaceFolder,
+    name
+  );
   const fileBufferResult: PartitionInfo = {
     data: fileBufferString,
     name,
