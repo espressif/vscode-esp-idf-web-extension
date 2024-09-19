@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { ConfigurationScope, FileType, Uri, workspace } from "vscode";
+import { FileType, Uri, workspace } from "vscode";
 
 export function uInt8ArrayToString(fileBuffer: Uint8Array) {
   let fileBufferString = "";
@@ -30,16 +30,21 @@ export async function getBuildDirectoryFileContent(
   workspaceFolder: Uri,
   ...fileRelativeToBuildPath: string[]
 ) {
+  let resultFilePath: Uri;
   let buildPath = workspace
     .getConfiguration("", workspaceFolder)
     .get("idf.buildPath") as string;
-  buildPath = resolveVariables(buildPath);
-  let resultFilePath: Uri;
   if (buildPath) {
-    resultFilePath = Uri.joinPath(
-      Uri.file(buildPath),
-      ...fileRelativeToBuildPath
-    );
+    buildPath = resolveVariables(buildPath, workspaceFolder);
+    const buildPathUri = Uri.parse(buildPath).with({
+      scheme: workspaceFolder.scheme,
+      authority: workspaceFolder.authority,
+    });
+    const buildPathStat = await workspace.fs.stat(buildPathUri);
+    if (buildPathStat.type !== FileType.Directory) {
+      throw new Error(`${buildPath} is not a directory or does not exists.`);
+    }
+    resultFilePath = Uri.joinPath(buildPathUri, ...fileRelativeToBuildPath);
   } else {
     resultFilePath = Uri.joinPath(
       workspaceFolder,
@@ -57,17 +62,16 @@ export async function getBuildDirectoryFileContent(
 
 export function resolveVariables(
   configPath: string,
-  scope?: ConfigurationScope
+  scope: Uri
 ) {
   const regexp = /\$\{(.*?)\}/g; // Find ${anything}
-  return configPath.replace(regexp, (match: string, name: string) => {
-    if (scope && match.indexOf("workspaceFolder") > 0) {
-      return scope instanceof Uri
-        ? scope.fsPath
-        : scope.uri
-        ? scope.uri.fsPath
-        : match;
+  return configPath.replace(
+    regexp,
+    (match: string) => {
+      if (scope && match.indexOf("workspaceFolder") > 0) {
+        return scope.fsPath === "/" ? "": scope.fsPath;
+      }
+      return match;
     }
-    return match;
-  });
+  );
 }

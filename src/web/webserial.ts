@@ -35,7 +35,6 @@ import {
 import { enc, MD5 } from "crypto-js";
 import {
   getBuildDirectoryFileContent,
-  resolveVariables,
   uInt8ArrayToString,
 } from "./utils";
 import { SerialTerminal } from "./serialPseudoTerminal";
@@ -212,13 +211,8 @@ async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) {
   const flashFileJson = JSON.parse(flasherArgsContentStr);
   const binPromises: Promise<PartitionInfo>[] = [];
   Object.keys(flashFileJson["flash_files"]).forEach((offset) => {
-    const fileName = flashFileJson["flash_files"][offset];
-    const filePath = Uri.joinPath(
-      workspaceFolder,
-      "build",
-      flashFileJson["flash_files"][offset]
-    );
-    binPromises.push(readFileIntoBuffer(filePath, fileName, offset));
+    const fileName = flashFileJson["flash_files"][offset] as string;
+    binPromises.push(readFileIntoBuffer(workspaceFolder, fileName, offset));
   });
   const binaries = await Promise.all(binPromises);
   const message: FlashSectionMessage = {
@@ -230,9 +224,8 @@ async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) {
   return message;
 }
 
-async function readFileIntoBuffer(filePath: Uri, name: string, offset: string) {
-  const fileBuffer = await workspace.fs.readFile(filePath);
-  let fileBufferString = uInt8ArrayToString(fileBuffer);
+async function readFileIntoBuffer(workspaceFolder: Uri, name: string, offset: string) {
+  const fileBufferString = await getBuildDirectoryFileContent(workspaceFolder, name);
   const fileBufferResult: PartitionInfo = {
     data: fileBufferString,
     name,
