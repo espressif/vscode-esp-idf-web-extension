@@ -30,7 +30,7 @@ jobs:
         run: yarn package
 
       - name: Upload .vsix File
-        uses: actions/upload-artifact@v1
+        uses: actions/upload-artifact@v4
         with:
           name: esp-idf-web-extension.vsix
           path: esp-idf-web-extension.vsix

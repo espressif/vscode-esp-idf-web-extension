@@ -18,7 +18,7 @@
 
 import {
   CancellationToken,
-  FileType,
+  FileSystemError,
   Progress,
   ProgressLocation,
   Uri,
@@ -33,8 +33,13 @@ import {
   Transport,
 } from "esptool-js";
 import { enc, MD5 } from "crypto-js";
-import { uInt8ArrayToString } from "./utils";
+import { getBuildDirectoryFileContent } from "./utils";
 import { SerialTerminal } from "./serialPseudoTerminal";
+
+export const OUTPUT_CHANNEL_NAME = "ESP-IDF Web";
+export const TERMINAL_NAME = "ESP-IDF Web Monitor";
+export const errorNotificationMessage =
+  "Build file not found. Make sure to build your ESP-IDF project first and if 'idf.buildPath' is defined, that is correctly set.";
 
 export interface PartitionInfo {
   name: string;
@@ -69,7 +74,7 @@ export async function monitorWithWebserial(
     });
 
     let idfTerminal = window.createTerminal({
-      name: "ESP-IDF Web Monitor",
+      name: TERMINAL_NAME,
       pty: serialTerminal,
     });
 
@@ -80,17 +85,21 @@ export async function monitorWithWebserial(
     });
 
     window.onDidCloseTerminal(async (t) => {
-      if (t.name === "ESP-IDF Web Monitor" && t.exitStatus) {
+      if (t.name === TERMINAL_NAME && t.exitStatus) {
         await transport.disconnect();
       }
     });
     idfTerminal.show();
     return idfTerminal;
   } catch (error: any) {
-    const outputChnl = window.createOutputChannel("ESP-IDF Web");
+    if (error instanceof FileSystemError && error.code === "FileNotFound") {
+      window.showErrorMessage(errorNotificationMessage);
+    }
+    const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
     outputChnl.appendLine(JSON.stringify(error));
     const errMsg = error && error.message ? error.message : error;
     outputChnl.appendLine(errMsg);
+    outputChnl.appendLine(errorNotificationMessage);
     outputChnl.show();
   }
 }
@@ -111,9 +120,9 @@ export async function flashWithWebSerial(
       }>,
       cancelToken: CancellationToken
     ) => {
+      const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
       try {
         const transport = new Transport(port);
-        const outputChnl = window.createOutputChannel("ESP-IDF Web");
         const clean = () => {
           outputChnl.clear();
         };
@@ -179,10 +188,13 @@ export async function flashWithWebSerial(
           await transport.disconnect();
         }
       } catch (error: any) {
-        const outputChnl = window.createOutputChannel("ESP-IDF Web");
+        if (error instanceof FileSystemError && error.code === "FileNotFound") {
+          window.showErrorMessage(errorNotificationMessage);
+        }
         outputChnl.appendLine(JSON.stringify(error));
         const errMsg = error && error.message ? error.message : error;
         outputChnl.appendLine(errMsg);
+        outputChnl.appendLine(errorNotificationMessage);
         outputChnl.show();
       }
     }
@@ -190,20 +202,10 @@ export async function flashWithWebSerial(
 }
 
 async function getMonitorBaudRate(workspaceFolder: Uri) {
-  const projDescFilePath = Uri.joinPath(
+  const projDescContentStr = await getBuildDirectoryFileContent(
     workspaceFolder,
-    "build",
     "project_description.json"
   );
-  const projDescStat = await workspace.fs.stat(projDescFilePath);
-  if (projDescStat.type !== FileType.File) {
-    throw new Error(`${projDescFilePath} does not exists.`);
-  }
-  const projDescContent = await workspace.fs.readFile(projDescFilePath);
-  if (!projDescContent) {
-    throw new Error("Build before monitor");
-  }
-  let projDescContentStr = uInt8ArrayToString(projDescContent);
   const projDescFileJson = JSON.parse(projDescContentStr);
   const monitorBaudRateStr = projDescFileJson["monitor_baud"];
   const monitorBaudRateNum = parseInt(monitorBaudRateStr);
@@ -211,30 +213,15 @@ async function getMonitorBaudRate(workspaceFolder: Uri) {
 }
 
 async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) {
-  const flashInfoFileName = Uri.joinPath(
+  const flasherArgsContentStr = await getBuildDirectoryFileContent(
     workspaceFolder,
-    "build",
     "flasher_args.json"
   );
-  const flasherArgsStat = await workspace.fs.stat(flashInfoFileName);
-  if (flasherArgsStat.type !== FileType.File) {
-    throw new Error(`${flashInfoFileName} does not exists.`);
-  }
-  const flasherArgsContent = await workspace.fs.readFile(flashInfoFileName);
-  if (!flasherArgsContent) {
-    throw new Error("Build before flashing");
-  }
-  let flasherArgsContentStr = uInt8ArrayToString(flasherArgsContent);
   const flashFileJson = JSON.parse(flasherArgsContentStr);
   const binPromises: Promise<PartitionInfo>[] = [];
   Object.keys(flashFileJson["flash_files"]).forEach((offset) => {
-    const fileName = flashFileJson["flash_files"][offset];
-    const filePath = Uri.joinPath(
-      workspaceFolder,
-      "build",
-      flashFileJson["flash_files"][offset]
-    );
-    binPromises.push(readFileIntoBuffer(filePath, fileName, offset));
+    const fileName = flashFileJson["flash_files"][offset] as string;
+    binPromises.push(readFileIntoBuffer(workspaceFolder, fileName, offset));
   });
   const binaries = await Promise.all(binPromises);
   const message: FlashSectionMessage = {
@@ -246,9 +233,15 @@ async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) {
   return message;
 }
 
-async function readFileIntoBuffer(filePath: Uri, name: string, offset: string) {
-  const fileBuffer = await workspace.fs.readFile(filePath);
-  let fileBufferString = uInt8ArrayToString(fileBuffer);
+async function readFileIntoBuffer(
+  workspaceFolder: Uri,
+  name: string,
+  offset: string
+) {
+  const fileBufferString = await getBuildDirectoryFileContent(
+    workspaceFolder,
+    name
+  );
   const fileBufferResult: PartitionInfo = {
     data: fileBufferString,
     name,
