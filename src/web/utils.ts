@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { FileType, Uri, workspace } from "vscode";
+import { FileType, StatusBarAlignment, Uri, window, workspace } from "vscode";
 
 export function uInt8ArrayToString(fileBuffer: Uint8Array) {
   let fileBufferString = "";
@@ -60,18 +60,38 @@ export async function getBuildDirectoryFileContent(
   return uInt8ArrayToString(resultFileContent);
 }
 
-export function resolveVariables(
-  configPath: string,
-  scope: Uri
-) {
+export function resolveVariables(configPath: string, scope: Uri) {
   const regexp = /\$\{(.*?)\}/g; // Find ${anything}
-  return configPath.replace(
-    regexp,
-    (match: string) => {
-      if (scope && match.indexOf("workspaceFolder") > 0) {
-        return scope.fsPath === "/" ? "": scope.fsPath;
-      }
-      return match;
+  return configPath.replace(regexp, (match: string) => {
+    if (scope && match.indexOf("workspaceFolder") > 0) {
+      return scope.fsPath === "/" ? "" : scope.fsPath;
     }
-  );
+    return match;
+  });
+}
+
+export function createStatusBarItem(
+  icon: string,
+  tooltip: string,
+  cmd: string,
+  priority: number
+) {
+  const alignment: StatusBarAlignment = StatusBarAlignment.Left;
+  const statusBarItem = window.createStatusBarItem(alignment, priority);
+  statusBarItem.text = icon;
+  statusBarItem.tooltip = tooltip;
+  statusBarItem.command = cmd;
+  const enableStatusBarIcons = workspace
+    .getConfiguration("")
+    .get("idfWeb.enableStatusBarIcons") as boolean;
+  if (enableStatusBarIcons) {
+    statusBarItem.show();
+  }
+  return statusBarItem;
+}
+
+export async function sleep(ms: number): Promise<any> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
 }
