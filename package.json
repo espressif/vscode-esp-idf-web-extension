@@ -51,20 +51,28 @@
     "wifi",
     "soc"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "workspaceContains:**/project_description.json",
+    "workspaceContains:**/sdkconfig",
+    "workspaceContains:**/CMakeLists.txt"
+  ],
   "browser": "./dist/web/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "esp-idf-web.flash",
+        "command": "espIdfWeb.flash",
         "title": "ESP-IDF-Web Flash"
       },
       {
-        "command": "esp-idf-web.monitor",
+        "command": "espIdfWeb.monitor",
         "title": "ESP-IDF-Web Monitor"
       },
       {
-        "command": "esp-idf-web.disposePort",
+        "command": "espIdfWeb.selectPort",
+        "title": "ESP-IDF-Web Select serial port"
+      },
+      {
+        "command": "espIdfWeb.disposePort",
         "title": "ESP-IDF-Web Disconnect serial port"
       }
     ],
@@ -72,7 +80,7 @@
       {
         "title": "ESP-IDF Web",
         "properties": {
-          "idf-web.flashBaudRate": {
+          "idfWeb.flashBaudRate": {
             "type": "number",
             "default": 921600,
             "enum": [
@@ -83,6 +91,12 @@
             ],
             "description": "Baud rate for flash command",
             "scope": "window"
+          },
+          "idfWeb.enableStatusBarIcons": {
+            "type": "boolean",
+            "default": true,
+            "description": "Show IDF-WEB status bar icons",
+            "scope": "application"
           }
         }
       }

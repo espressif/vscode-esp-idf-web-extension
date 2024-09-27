@@ -104,13 +104,15 @@ export async function monitorWithWebserial(
   }
 }
 
+export let isFlashing: boolean = false;
+
 export async function flashWithWebSerial(
   workspaceFolder: Uri,
   port: SerialPort
 ) {
   window.withProgress(
     {
-      cancellable: true,
+      cancellable: false,
       location: ProgressLocation.Notification,
       title: "Flashing with WebSerial...",
     },
@@ -122,6 +124,7 @@ export async function flashWithWebSerial(
     ) => {
       const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
       try {
+        isFlashing = true;
         const transport = new Transport(port);
         const clean = () => {
           outputChnl.clear();
@@ -139,8 +142,8 @@ export async function flashWithWebSerial(
           writeLine,
         };
         const flashBaudRate = await workspace
-          .getConfiguration("")
-          .get("idf-web.flashBaudRate");
+          .getConfiguration("", workspaceFolder)
+          .get("idfWeb.flashBaudRate");
         if (!flashBaudRate) {
           return;
         }
@@ -187,7 +190,9 @@ export async function flashWithWebSerial(
         if (transport) {
           await transport.disconnect();
         }
+        isFlashing = false;
       } catch (error: any) {
+        isFlashing = false;
         if (error instanceof FileSystemError && error.code === "FileNotFound") {
           window.showErrorMessage(errorNotificationMessage);
         }
