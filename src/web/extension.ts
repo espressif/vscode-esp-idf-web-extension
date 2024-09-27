@@ -129,13 +129,13 @@ function createStatusBarItems() {
     `$(zap)`,
     "ESP-IDF-Web Flash",
     "espIdfWeb.flash",
-    93
+    94
   );
   statusBarItems["monitor"] = createStatusBarItem(
     "$(device-desktop)",
     "ESP-IDF-Web Monitor",
     "espIdfWeb.monitor",
-    92
+    93
   );
 }
 
