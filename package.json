@@ -2,7 +2,7 @@
   "name": "esp-idf-web",
   "displayName": "ESP-IDF WEB",
   "description": "Espressif ESP-IDF Web extension for Webserial communication",
-  "version": "0.0.2",
+  "version": "0.0.1",
   "license": "Apache-2.0",
   "publisher": "espressif",
   "icon": "media/espressif_icon.png",
@@ -111,7 +111,9 @@
     "package-web": "webpack --mode production --devtool hidden-source-map",
     "lint": "eslint src --ext ts",
     "run-in-browser": "yarn compile-web && vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
-    "package": "vsce package --yarn -o esp-idf-web-extension.vsix"
+    "package": "vsce package --yarn -o esp-idf-web-extension.vsix",
+    "release": "vsce publish --yarn -p ${VS_MARKETPLACE_TOKEN} --packagePath esp-idf-web-extension.vsix",
+    "open-vsx-release": "ovsx publish esp-idf-web-extension.vsix -p ${OPENVSX_MARKETPLACE_TOKEN}"
   },
   "devDependencies": {
     "@types/assert": "^1.5.10",
@@ -126,6 +128,7 @@
     "assert": "^2.1.0",
     "eslint": "^8.57.0",
     "mocha": "^10.4.0",
+    "ovsx": "^0.9.5",
     "process": "^0.11.10",
     "ts-loader": "^9.5.1",
     "typescript": "^5.4.5",
