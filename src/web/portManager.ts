@@ -19,41 +19,79 @@
 import { commands, StatusBarItem, window, workspace } from "vscode";
 import { createStatusBarItem } from "./utils";
 
-export async function getSerialPort() {
-  const portInfo = (await commands.executeCommand(
-    "workbench.experimental.requestSerialPort"
-  )) as SerialPortInfo;
-  if (!portInfo) {
+export async function getSerialPort(disconnectCallback?: () => void) {
+  let serialport: SerialPort | undefined;
+  if ((navigator as any).serial) {
+    const portInfo = (await commands.executeCommand(
+      "workbench.experimental.requestSerialPort"
+    )) as SerialPortInfo;
+    if (!portInfo) {
+      window.showInformationMessage("No port selected");
+      return;
+    }
+    const ports = await navigator.serial.getPorts();
+    serialport = ports.find((item) => {
+      const info = item.getInfo();
+      return (
+        info.usbVendorId === portInfo.usbVendorId &&
+        info.usbProductId === portInfo.usbProductId
+      );
+    });
+    if (serialport) {
+      serialport.addEventListener("disconnect", () => {
+        disconnectCallback?.();
+      });
+    }
+  }
+  else if ((navigator as any).usb) {
+    window.showInformationMessage("WebSerial not supported. Polyfilling with WebUSB");
+    let device = (await commands.executeCommand('workbench.experimental.requestUsbDevice', {filters: [{classCode: 2,}]})) as USBDevice;
+    if (!device) {
+      window.showInformationMessage("No device selected");
+      return;
+    }
+    const ports = await (navigator as any).usb.getDevices();
+    let usbPort = ports.find((item: USBDevice) => {
+      return (
+        item.vendorId === device.vendorId &&
+        item.productId === device.productId
+      );
+    });
+    (navigator as any).usb.addEventListener("disconnect", () => {
+      disconnectCallback?.();
+    });
+    const serialPortPollyfill = (await import("web-serial-polyfill")).SerialPort;
+    serialport = new serialPortPollyfill(usbPort as USBDevice, {
+      protocol: 0,
+      usbControlInterfaceClass: 2,
+      usbTransferInterfaceClass: 10,
+    }) as unknown as SerialPort;
+  }
+  else {
+    window.showInformationMessage("WebSerial and WebUSB not supported.");
     return;
   }
-  const ports = await navigator.serial.getPorts();
-  let port = ports.find((item) => {
-    const info = item.getInfo();
-    return (
-      info.usbVendorId === portInfo.usbVendorId &&
-      info.usbProductId === portInfo.usbProductId
-    );
-  });
-  return port;
+  return serialport;
 }
 
 export class IDFWebSerialPort {
   private static instance: SerialPort | undefined;
   public static statusBarItem: StatusBarItem | undefined;
 
+  static async disposePort() {
+    this.instance = undefined;
+    if (this.statusBarItem) {
+      this.statusBarItem.dispose();
+      this.statusBarItem = undefined;
+    }
+  }
+
   static async init() {
     if (!this.instance) {
-      this.instance = await getSerialPort();
+      this.instance = await getSerialPort(this.disposePort);
     }
     if (this.instance) {
       this.createStatusBarItem(this.instance);
-      this.instance.addEventListener("disconnect", (port) => {
-        this.instance = undefined;
-        if (this.statusBarItem) {
-          this.statusBarItem.dispose();
-          this.statusBarItem = undefined;
-        }
-      });
     }
     return this.instance;
   }

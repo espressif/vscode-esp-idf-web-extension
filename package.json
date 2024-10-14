@@ -137,7 +137,9 @@
     "webpack-cli": "^5.1.4"
   },
   "dependencies": {
+    "@types/w3c-web-usb": "^1.0.10",
     "crypto-js": "^4.2.0",
-    "esptool-js": "^0.4.5"
+    "esptool-js": "^0.4.5",
+    "web-serial-polyfill": "^1.0.15"
   }
 }
