@@ -64,7 +64,7 @@ export function resolveVariables(configPath: string, scope: Uri) {
   const regexp = /\$\{(.*?)\}/g; // Find ${anything}
   return configPath.replace(regexp, (match: string) => {
     if (scope && match.indexOf("workspaceFolder") > 0) {
-      return scope.fsPath === "/" ? "" : scope.fsPath;
+      return scope.fsPath === "/" || scope.fsPath === "\\" ? "" : scope.fsPath;
     }
     return match;
   });
