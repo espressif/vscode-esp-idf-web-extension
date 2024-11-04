@@ -90,7 +90,7 @@ export class IDFWebSerialPort {
     if (!this.instance) {
       this.instance = await getSerialPort(this.disposePort);
     }
-    if (this.instance) {
+    if (this.instance && !this.statusBarItem) {
       this.createStatusBarItem(this.instance);
     }
     return this.instance;
