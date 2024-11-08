@@ -18,6 +18,7 @@
 
 import * as vscode from "vscode";
 import {
+  flashAndMonitor,
   flashWithWebSerial,
   isFlashing,
   monitorWithWebserial,
@@ -63,6 +64,25 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
   context.subscriptions.push(monitorDisposable);
+
+  const flashMonitorDisposable = vscode.commands.registerCommand(
+    "espIdfWeb.flashAndMonitor",
+    async () => {
+      if (monitorTerminal) {
+        monitorTerminal.dispose();
+        await sleep(1000);
+      }
+      let workspaceFolder = await getWorkspaceFolder();
+      if (!workspaceFolder) {
+        return;
+      }
+      const port = await IDFWebSerialPort.init();
+      if (workspaceFolder && port) {
+        monitorTerminal = await flashAndMonitor(workspaceFolder.uri, port);
+      }
+    }
+  );
+  context.subscriptions.push(flashMonitorDisposable);
 
   const selectPort = vscode.commands.registerCommand(
     "espIdfWeb.selectPort",

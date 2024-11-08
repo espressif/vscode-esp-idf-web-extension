@@ -68,6 +68,10 @@
         "title": "ESP-IDF-Web Monitor"
       },
       {
+        "command": "espIdfWeb.flashAndMonitor",
+        "title": "ESP-IDF-Web Flash and Monitor"
+      },
+      {
         "command": "espIdfWeb.selectPort",
         "title": "ESP-IDF-Web Select serial port"
       },
