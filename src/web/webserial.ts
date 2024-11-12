@@ -188,6 +188,7 @@ export async function flashTask(
 
   await esploader.writeFlash(flashOptions);
   progress.report({ message: `ESP-IDF Web Flashing done` });
+  window.showInformationMessage(`ESP-IDF Web Flashing done.`);
   outputChannel.appendLine(`ESP-IDF Web Flashing done`);
   if (transport) {
     await transport.disconnect();
