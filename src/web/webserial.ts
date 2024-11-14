@@ -19,6 +19,7 @@
 import {
   CancellationToken,
   FileSystemError,
+  OutputChannel,
   Progress,
   ProgressLocation,
   Uri,
@@ -33,8 +34,12 @@ import {
   Transport,
 } from "esptool-js";
 import { enc, MD5 } from "crypto-js";
-import { getBuildDirectoryFileContent } from "./utils";
 import { SerialTerminal } from "./serialPseudoTerminal";
+import {
+  getFlashSectionsForCurrentWorkspace,
+  getMonitorBaudRate,
+  sleep,
+} from "./utils";
 
 export const OUTPUT_CHANNEL_NAME = "ESP-IDF Web";
 export const TERMINAL_NAME = "ESP-IDF Web Monitor";
@@ -54,6 +59,40 @@ export interface FlashSectionMessage {
   flashFreq: string;
 }
 
+export async function createMonitorTerminal(
+  workspaceFolder: Uri,
+  transport: Transport
+) {
+  await transport.connect();
+  const monitorBaudRate = await getMonitorBaudRate(workspaceFolder);
+  if (!monitorBaudRate) {
+    return;
+  }
+
+  const serialTerminal = new SerialTerminal(transport, {
+    baudRate: monitorBaudRate,
+  });
+
+  let idfTerminal = window.createTerminal({
+    name: TERMINAL_NAME,
+    pty: serialTerminal,
+  });
+
+  serialTerminal.onDidClose((e) => {
+    if (idfTerminal && idfTerminal.exitStatus === undefined) {
+      idfTerminal.dispose();
+    }
+  });
+
+  window.onDidCloseTerminal(async (t) => {
+    if (transport && t.name === TERMINAL_NAME && t.exitStatus) {
+      await transport.disconnect();
+    }
+  });
+  idfTerminal.show();
+  return idfTerminal;
+}
+
 export async function monitorWithWebserial(
   workspaceFolder: Uri,
   port: SerialPort
@@ -62,35 +101,8 @@ export async function monitorWithWebserial(
     return;
   }
   try {
-    const monitorBaudRate = await getMonitorBaudRate(workspaceFolder);
-    if (!monitorBaudRate) {
-      return;
-    }
     const transport = new Transport(port);
-    await transport.connect();
-
-    const serialTerminal = new SerialTerminal(transport, {
-      baudRate: monitorBaudRate,
-    });
-
-    let idfTerminal = window.createTerminal({
-      name: TERMINAL_NAME,
-      pty: serialTerminal,
-    });
-
-    serialTerminal.onDidClose((e) => {
-      if (idfTerminal && idfTerminal.exitStatus === undefined) {
-        idfTerminal.dispose();
-      }
-    });
-
-    window.onDidCloseTerminal(async (t) => {
-      if (t.name === TERMINAL_NAME && t.exitStatus) {
-        await transport.disconnect();
-      }
-    });
-    idfTerminal.show();
-    return idfTerminal;
+    return await createMonitorTerminal(workspaceFolder, transport);
   } catch (error: any) {
     if (error instanceof FileSystemError && error.code === "FileNotFound") {
       window.showErrorMessage(errorNotificationMessage);
@@ -106,11 +118,90 @@ export async function monitorWithWebserial(
 
 export let isFlashing: boolean = false;
 
+export async function flashTask(
+  workspaceFolder: Uri,
+  port: SerialPort,
+  progress: Progress<{ message: string }>,
+  outputChannel: OutputChannel
+) {
+  isFlashing = true;
+  const transport = new Transport(port);
+  const clean = () => {
+    outputChannel.clear();
+  };
+  const writeLine = (data: string) => {
+    outputChannel.appendLine(data);
+  };
+  const write = (data: string) => {
+    outputChannel.append(data);
+  };
+
+  const loaderTerminal: IEspLoaderTerminal = {
+    clean,
+    write,
+    writeLine,
+  };
+  let flashBaudRate = await workspace
+    .getConfiguration("", workspaceFolder)
+    .get("idfWeb.flashBaudRate");
+  if (!flashBaudRate) {
+    flashBaudRate = 921600;
+    outputChannel.appendLine(
+      `idfWeb.flashBaudRate not defined. Using default value ${flashBaudRate}`
+    );
+  }
+  const loaderOptions = {
+    transport,
+    baudrate: flashBaudRate,
+    terminal: loaderTerminal,
+  } as LoaderOptions;
+  progress.report({
+    message: `ESP-IDF Web Flashing using baud rate ${flashBaudRate}`,
+  });
+  outputChannel.appendLine(
+    `ESP-IDF Web Flashing with Webserial using baud rate ${flashBaudRate}`
+  );
+  outputChannel.show();
+  const esploader = new ESPLoader(loaderOptions);
+  const chip = await esploader.main();
+  const flashSectionsMessage = await getFlashSectionsForCurrentWorkspace(
+    workspaceFolder
+  );
+  const flashOptions: FlashOptions = {
+    fileArray: flashSectionsMessage.sections,
+    flashSize: flashSectionsMessage.flashSize,
+    flashFreq: flashSectionsMessage.flashFreq,
+    flashMode: flashSectionsMessage.flashMode,
+    eraseAll: false,
+    compress: true,
+    reportProgress: (fileIndex: number, written: number, total: number) => {
+      progress.report({
+        message: `${flashSectionsMessage.sections[fileIndex].name} (${written}/${total})`,
+      });
+      outputChannel.appendLine(
+        `${flashSectionsMessage.sections[fileIndex].name} (${written}/${total})`
+      );
+    },
+    calculateMD5Hash: (image: string) =>
+      MD5(enc.Latin1.parse(image)).toString(),
+  } as FlashOptions;
+
+  await esploader.writeFlash(flashOptions);
+  progress.report({ message: `ESP-IDF Web Flashing done` });
+  window.showInformationMessage(`ESP-IDF Web Flashing done.`);
+  outputChannel.appendLine(`ESP-IDF Web Flashing done`);
+  if (transport) {
+    await transport.disconnect();
+  }
+  isFlashing = false;
+  return transport;
+}
+
 export async function flashWithWebSerial(
   workspaceFolder: Uri,
   port: SerialPort
 ) {
-  window.withProgress(
+  await window.withProgress(
     {
       cancellable: false,
       location: ProgressLocation.Notification,
@@ -124,73 +215,7 @@ export async function flashWithWebSerial(
     ) => {
       const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
       try {
-        isFlashing = true;
-        const transport = new Transport(port);
-        const clean = () => {
-          outputChnl.clear();
-        };
-        const writeLine = (data: string) => {
-          outputChnl.appendLine(data);
-        };
-        const write = (data: string) => {
-          outputChnl.append(data);
-        };
-
-        const loaderTerminal: IEspLoaderTerminal = {
-          clean,
-          write,
-          writeLine,
-        };
-        const flashBaudRate = await workspace
-          .getConfiguration("", workspaceFolder)
-          .get("idfWeb.flashBaudRate");
-        if (!flashBaudRate) {
-          return;
-        }
-        const loaderOptions = {
-          transport,
-          baudrate: flashBaudRate,
-          terminal: loaderTerminal,
-        } as LoaderOptions;
-        progress.report({
-          message: `ESP-IDF Web Flashing using baud rate ${flashBaudRate}`,
-        });
-        outputChnl.appendLine(
-          `ESP-IDF Web Flashing with Webserial using baud rate ${flashBaudRate}`
-        );
-        outputChnl.show();
-        const esploader = new ESPLoader(loaderOptions);
-        const chip = await esploader.main();
-        const flashSectionsMessage = await getFlashSectionsForCurrentWorkspace(
-          workspaceFolder
-        );
-        const flashOptions: FlashOptions = {
-          fileArray: flashSectionsMessage.sections,
-          flashSize: flashSectionsMessage.flashSize,
-          flashFreq: flashSectionsMessage.flashFreq,
-          flashMode: flashSectionsMessage.flashMode,
-          eraseAll: false,
-          compress: true,
-          reportProgress: (
-            fileIndex: number,
-            written: number,
-            total: number
-          ) => {
-            progress.report({
-              message: `${flashSectionsMessage.sections[fileIndex].name} (${written}/${total})`,
-            });
-          },
-          calculateMD5Hash: (image: string) =>
-            MD5(enc.Latin1.parse(image)).toString(),
-        } as FlashOptions;
-
-        await esploader.writeFlash(flashOptions);
-        progress.report({ message: `ESP-IDF Web Flashing done` });
-        outputChnl.appendLine(`ESP-IDF Web Flashing done`);
-        if (transport) {
-          await transport.disconnect();
-        }
-        isFlashing = false;
+        await flashTask(workspaceFolder, port, progress, outputChnl);
       } catch (error: any) {
         isFlashing = false;
         if (error instanceof FileSystemError && error.code === "FileNotFound") {
@@ -206,51 +231,40 @@ export async function flashWithWebSerial(
   );
 }
 
-async function getMonitorBaudRate(workspaceFolder: Uri) {
-  const projDescContentStr = await getBuildDirectoryFileContent(
-    workspaceFolder,
-    "project_description.json"
+export async function flashAndMonitor(workspaceFolder: Uri, port: SerialPort) {
+  return await window.withProgress(
+    {
+      cancellable: false,
+      location: ProgressLocation.Notification,
+      title: "Flashing with WebSerial then launching Monitor...",
+    },
+    async (
+      progress: Progress<{
+        message: string;
+      }>,
+      cancelToken: CancellationToken
+    ) => {
+      const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
+      try {
+        const transport = await flashTask(
+          workspaceFolder,
+          port,
+          progress,
+          outputChnl
+        );
+        await transport.waitForUnlock(500);
+        return await createMonitorTerminal(workspaceFolder, transport);
+      } catch (error: any) {
+        isFlashing = false;
+        if (error instanceof FileSystemError && error.code === "FileNotFound") {
+          window.showErrorMessage(errorNotificationMessage);
+        }
+        outputChnl.appendLine(JSON.stringify(error));
+        const errMsg = error && error.message ? error.message : error;
+        outputChnl.appendLine(errMsg);
+        outputChnl.appendLine(errorNotificationMessage);
+        outputChnl.show();
+      }
+    }
   );
-  const projDescFileJson = JSON.parse(projDescContentStr);
-  const monitorBaudRateStr = projDescFileJson["monitor_baud"];
-  const monitorBaudRateNum = parseInt(monitorBaudRateStr);
-  return monitorBaudRateNum;
-}
-
-async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) {
-  const flasherArgsContentStr = await getBuildDirectoryFileContent(
-    workspaceFolder,
-    "flasher_args.json"
-  );
-  const flashFileJson = JSON.parse(flasherArgsContentStr);
-  const binPromises: Promise<PartitionInfo>[] = [];
-  Object.keys(flashFileJson["flash_files"]).forEach((offset) => {
-    const fileName = flashFileJson["flash_files"][offset] as string;
-    binPromises.push(readFileIntoBuffer(workspaceFolder, fileName, offset));
-  });
-  const binaries = await Promise.all(binPromises);
-  const message: FlashSectionMessage = {
-    sections: binaries,
-    flashFreq: flashFileJson["flash_settings"]["flash_freq"],
-    flashMode: flashFileJson["flash_settings"]["flash_mode"],
-    flashSize: flashFileJson["flash_settings"]["flash_size"],
-  };
-  return message;
-}
-
-async function readFileIntoBuffer(
-  workspaceFolder: Uri,
-  name: string,
-  offset: string
-) {
-  const fileBufferString = await getBuildDirectoryFileContent(
-    workspaceFolder,
-    name
-  );
-  const fileBufferResult: PartitionInfo = {
-    data: fileBufferString,
-    name,
-    address: parseInt(offset),
-  };
-  return fileBufferResult;
 }

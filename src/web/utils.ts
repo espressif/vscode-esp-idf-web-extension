@@ -17,6 +17,7 @@
  */
 
 import { FileType, StatusBarAlignment, Uri, window, workspace } from "vscode";
+import { FlashSectionMessage, PartitionInfo } from "./webserial";
 
 export function uInt8ArrayToString(fileBuffer: Uint8Array) {
   let fileBufferString = "";
@@ -58,6 +59,55 @@ export async function getBuildDirectoryFileContent(
   }
   const resultFileContent = await workspace.fs.readFile(resultFilePath);
   return uInt8ArrayToString(resultFileContent);
+}
+
+export async function getMonitorBaudRate(workspaceFolder: Uri) {
+  const projDescContentStr = await getBuildDirectoryFileContent(
+    workspaceFolder,
+    "project_description.json"
+  );
+  const projDescFileJson = JSON.parse(projDescContentStr);
+  const monitorBaudRateStr = projDescFileJson["monitor_baud"];
+  const monitorBaudRateNum = parseInt(monitorBaudRateStr);
+  return monitorBaudRateNum;
+}
+
+export async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) {
+  const flasherArgsContentStr = await getBuildDirectoryFileContent(
+    workspaceFolder,
+    "flasher_args.json"
+  );
+  const flashFileJson = JSON.parse(flasherArgsContentStr);
+  const binPromises: Promise<PartitionInfo>[] = [];
+  Object.keys(flashFileJson["flash_files"]).forEach((offset) => {
+    const fileName = flashFileJson["flash_files"][offset] as string;
+    binPromises.push(readFileIntoBuffer(workspaceFolder, fileName, offset));
+  });
+  const binaries = await Promise.all(binPromises);
+  const message: FlashSectionMessage = {
+    sections: binaries,
+    flashFreq: flashFileJson["flash_settings"]["flash_freq"],
+    flashMode: flashFileJson["flash_settings"]["flash_mode"],
+    flashSize: flashFileJson["flash_settings"]["flash_size"],
+  };
+  return message;
+}
+
+export async function readFileIntoBuffer(
+  workspaceFolder: Uri,
+  name: string,
+  offset: string
+) {
+  const fileBufferString = await getBuildDirectoryFileContent(
+    workspaceFolder,
+    name
+  );
+  const fileBufferResult: PartitionInfo = {
+    data: fileBufferString,
+    name,
+    address: parseInt(offset),
+  };
+  return fileBufferResult;
 }
 
 export function resolveVariables(configPath: string, scope: Uri) {
