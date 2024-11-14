@@ -21,21 +21,20 @@ import {
   flashAndMonitor,
   flashWithWebSerial,
   isFlashing,
-  monitorWithWebserial,
 } from "./webserial";
 import { IDFWebSerialPort } from "./portManager";
 import { createStatusBarItem, sleep } from "./utils";
+import { IDFWebMonitorTerminal } from "./monitorTerminalManager";
+import { monitorWithWebserial } from "./monitor";
 
-let monitorTerminal: vscode.Terminal | undefined;
 const statusBarItems: { [key: string]: vscode.StatusBarItem } = {};
 
 export function activate(context: vscode.ExtensionContext) {
   const flashDisposable = vscode.commands.registerCommand(
     "espIdfWeb.flash",
     async () => {
-      if (monitorTerminal) {
-        monitorTerminal.dispose();
-        await sleep(1000);
+      if (IDFWebMonitorTerminal.exists()) {
+        await IDFWebMonitorTerminal.dispose();
       }
       let workspaceFolder = await getWorkspaceFolder();
       if (!workspaceFolder) {
@@ -53,13 +52,16 @@ export function activate(context: vscode.ExtensionContext) {
   const monitorDisposable = vscode.commands.registerCommand(
     "espIdfWeb.monitor",
     async () => {
+      if (IDFWebMonitorTerminal.exists()) {
+        await IDFWebMonitorTerminal.dispose();
+      }
       let workspaceFolder = await getWorkspaceFolder();
       if (!workspaceFolder) {
         return;
       }
       const port = await IDFWebSerialPort.init();
       if (workspaceFolder && port) {
-        monitorTerminal = await monitorWithWebserial(workspaceFolder.uri, port);
+        await monitorWithWebserial(workspaceFolder.uri, port);
       }
     }
   );
@@ -68,9 +70,9 @@ export function activate(context: vscode.ExtensionContext) {
   const flashMonitorDisposable = vscode.commands.registerCommand(
     "espIdfWeb.flashAndMonitor",
     async () => {
-      if (monitorTerminal) {
-        monitorTerminal.dispose();
-        await sleep(1000);
+      if (IDFWebMonitorTerminal.exists()) {
+        await IDFWebMonitorTerminal.dispose();
+        await sleep(2000);
       }
       let workspaceFolder = await getWorkspaceFolder();
       if (!workspaceFolder) {
@@ -78,7 +80,7 @@ export function activate(context: vscode.ExtensionContext) {
       }
       const port = await IDFWebSerialPort.init();
       if (workspaceFolder && port) {
-        monitorTerminal = await flashAndMonitor(workspaceFolder.uri, port);
+        await flashAndMonitor(workspaceFolder.uri, port);
       }
     }
   );
@@ -95,9 +97,8 @@ export function activate(context: vscode.ExtensionContext) {
   const disposePort = vscode.commands.registerCommand(
     "espIdfWeb.disposePort",
     async () => {
-      if (monitorTerminal) {
-        monitorTerminal.dispose();
-        await sleep(1000);
+      if (IDFWebMonitorTerminal.exists()) {
+        await IDFWebMonitorTerminal.dispose();
       }
       if (isFlashing) {
         vscode.window.showErrorMessage(

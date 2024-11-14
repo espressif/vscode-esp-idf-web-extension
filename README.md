@@ -32,7 +32,7 @@ Run `yarn` to install dependencies
 
 Run `yarn package` to generate the `esp-idf-web-extension.vsix` installer to install in Codespaces, Visual Studio Code or other compatibles IDEs.
 
-Run `yarn run-in-browser` to start a Chromium browser with Visual Studio Code running the extension. (This environment does not provide a usable terminal).
+Run `yarn run-in-browser <path-to-idf-project>` to start a Chromium browser with Visual Studio Code running the extension. (This environment does not provide a usable terminal).
 
 You can also side load it into `vscode.dev` by following this [documentation](https://code.visualstudio.com/api/extension-guides/web-extensions#test-your-web-extension-in-vscode.dev).
 
