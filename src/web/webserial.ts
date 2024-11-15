@@ -34,15 +34,10 @@ import {
   Transport,
 } from "esptool-js";
 import { enc, MD5 } from "crypto-js";
-import { SerialTerminal } from "./serialPseudoTerminal";
-import {
-  getFlashSectionsForCurrentWorkspace,
-  getMonitorBaudRate,
-  sleep,
-} from "./utils";
+import { getFlashSectionsForCurrentWorkspace } from "./utils";
+import { IDFWebMonitorTerminal } from "./monitorTerminalManager";
 
 export const OUTPUT_CHANNEL_NAME = "ESP-IDF Web";
-export const TERMINAL_NAME = "ESP-IDF Web Monitor";
 export const errorNotificationMessage =
   "Build file not found. Make sure to build your ESP-IDF project first and if 'idf.buildPath' is defined, that is correctly set.";
 
@@ -57,63 +52,6 @@ export interface FlashSectionMessage {
   flashSize: string;
   flashMode: string;
   flashFreq: string;
-}
-
-export async function createMonitorTerminal(
-  workspaceFolder: Uri,
-  transport: Transport
-) {
-  await transport.connect();
-  const monitorBaudRate = await getMonitorBaudRate(workspaceFolder);
-  if (!monitorBaudRate) {
-    return;
-  }
-
-  const serialTerminal = new SerialTerminal(transport, {
-    baudRate: monitorBaudRate,
-  });
-
-  let idfTerminal = window.createTerminal({
-    name: TERMINAL_NAME,
-    pty: serialTerminal,
-  });
-
-  serialTerminal.onDidClose((e) => {
-    if (idfTerminal && idfTerminal.exitStatus === undefined) {
-      idfTerminal.dispose();
-    }
-  });
-
-  window.onDidCloseTerminal(async (t) => {
-    if (transport && t.name === TERMINAL_NAME && t.exitStatus) {
-      await transport.disconnect();
-    }
-  });
-  idfTerminal.show();
-  return idfTerminal;
-}
-
-export async function monitorWithWebserial(
-  workspaceFolder: Uri,
-  port: SerialPort
-) {
-  if (!port) {
-    return;
-  }
-  try {
-    const transport = new Transport(port);
-    return await createMonitorTerminal(workspaceFolder, transport);
-  } catch (error: any) {
-    if (error instanceof FileSystemError && error.code === "FileNotFound") {
-      window.showErrorMessage(errorNotificationMessage);
-    }
-    const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
-    outputChnl.appendLine(JSON.stringify(error));
-    const errMsg = error && error.message ? error.message : error;
-    outputChnl.appendLine(errMsg);
-    outputChnl.appendLine(errorNotificationMessage);
-    outputChnl.show();
-  }
 }
 
 export let isFlashing: boolean = false;
@@ -236,7 +174,7 @@ export async function flashAndMonitor(workspaceFolder: Uri, port: SerialPort) {
     {
       cancellable: false,
       location: ProgressLocation.Notification,
-      title: "Flashing with WebSerial then launching Monitor...",
+      title: "Flash and Monitor...",
     },
     async (
       progress: Progress<{
@@ -253,7 +191,7 @@ export async function flashAndMonitor(workspaceFolder: Uri, port: SerialPort) {
           outputChnl
         );
         await transport.waitForUnlock(500);
-        return await createMonitorTerminal(workspaceFolder, transport);
+        await IDFWebMonitorTerminal.init(workspaceFolder, transport);
       } catch (error: any) {
         isFlashing = false;
         if (error instanceof FileSystemError && error.code === "FileNotFound") {

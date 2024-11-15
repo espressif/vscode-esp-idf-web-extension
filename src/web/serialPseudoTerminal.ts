@@ -32,10 +32,7 @@ export class SerialTerminal implements Pseudoterminal {
   public onDidClose: Event<number> = this.closeEmitter.event;
   public closed = false;
 
-  public constructor(
-    protected transport: Transport,
-    protected options: SerialOptions
-  ) {}
+  public constructor(protected transport: Transport) {}
 
   public async open(
     _initialDimensions: TerminalDimensions | undefined
@@ -51,9 +48,6 @@ export class SerialTerminal implements Pseudoterminal {
         break;
       }
     }
-
-    this.transport.connect(this.options.baudRate, this.options);
-    this.writeLine(`Opened with baud rate: ${this.options.baudRate}`);
   }
 
   public async reset() {
@@ -65,11 +59,13 @@ export class SerialTerminal implements Pseudoterminal {
   }
 
   public async close() {
-    await this.transport.waitForUnlock(1500);
-    await this.transport.disconnect();
     if (!this.closed) {
       this.closed = true;
       this.closeEmitter.fire(0);
+    }
+    if (this.transport.device.readable) {
+      await this.transport.disconnect();
+      await this.transport.waitForUnlock(1500);
     }
   }
 

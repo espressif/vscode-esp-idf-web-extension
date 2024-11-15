@@ -114,7 +114,7 @@
     "watch-web": "webpack --watch",
     "package-web": "webpack --mode production --devtool hidden-source-map",
     "lint": "eslint src --ext ts",
-    "run-in-browser": "yarn compile-web && vscode-test-web --browserType=chromium --extensionDevelopmentPath=. .",
+    "run-in-browser": "yarn compile-web && vscode-test-web --browserType=chromium --extensionDevelopmentPath=.",
     "package": "vsce package --yarn -o esp-idf-web-extension.vsix",
     "release": "vsce publish --yarn -p ${VS_MARKETPLACE_TOKEN} --packagePath esp-idf-web-extension.vsix",
     "open-vsx-release": "ovsx publish esp-idf-web-extension.vsix -p ${OPENVSX_MARKETPLACE_TOKEN}"
