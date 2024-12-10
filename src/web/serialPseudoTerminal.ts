@@ -40,13 +40,14 @@ export class SerialTerminal implements Pseudoterminal {
     await this.transport.sleep(500);
     await this.reset();
     while (!this.closed) {
-      let val = await this.transport.rawRead();
-      if (typeof val !== "undefined") {
-        let valStr = uInt8ArrayToString(val);
-        this.writeOutput(valStr);
-      } else {
+      const readLoop = this.transport.rawRead();
+      const { value, done } = await readLoop.next();
+  
+      if (done || !value) {
         break;
       }
+      let valStr = uInt8ArrayToString(value);
+      this.writeOutput(valStr);
     }
   }
 
