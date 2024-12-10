@@ -1557,10 +1557,10 @@ espree@^9.6.0, espree@^9.6.1:
     acorn-jsx "^5.3.2"
     eslint-visitor-keys "^3.4.1"
 
-esptool-js@^0.4.5:
-  version "0.4.5"
-  resolved "https://registry.yarnpkg.com/esptool-js/-/esptool-js-0.4.5.tgz#c7517bfbaf9f7d020425700dccdb75ca80449ac0"
-  integrity sha512-ueydZt9LIsVCYtPt5q+y0ATnJJA3OflKMPDLUrIG95O5Vi3ZBt80lPh2hghGgSpMv+Whd79zcu4Ty67xFdzAyQ==
+esptool-js@^0.5.2:
+  version "0.5.2"
+  resolved "https://registry.yarnpkg.com/esptool-js/-/esptool-js-0.5.2.tgz#c7c0419ddb4e20bd08231c0147682aae58b748d5"
+  integrity sha512-EGw5AyudbW892ddVhN9Ot9nz45bizoUnqMT8mIFIrI2zgiEDHNHTkWX9GGwwoTHXRRTu5W97Bsw/pD5sfMizLQ==
   dependencies:
     atob-lite "^2.0.0"
     pako "^2.1.0"
