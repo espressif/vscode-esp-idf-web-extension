@@ -2,7 +2,7 @@
   "name": "esp-idf-web",
   "displayName": "ESP-IDF WEB",
   "description": "Espressif ESP-IDF Web extension for Webserial communication",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "license": "Apache-2.0",
   "publisher": "espressif",
   "icon": "media/espressif_icon.png",
