@@ -72,7 +72,6 @@ export function activate(context: vscode.ExtensionContext) {
     async () => {
       if (IDFWebMonitorTerminal.exists()) {
         await IDFWebMonitorTerminal.dispose();
-        await sleep(2000);
       }
       let workspaceFolder = await getWorkspaceFolder();
       if (!workspaceFolder) {
