@@ -19,13 +19,10 @@
 import { FileType, StatusBarAlignment, Uri, window, workspace } from "vscode";
 import { FlashSectionMessage, PartitionInfo } from "./webserial";
 
-export function uInt8ArrayToString(fileBuffer: Uint8Array) {
-  let fileBufferString = "";
-  for (let i = 0; i < fileBuffer.length; i++) {
-    fileBufferString += String.fromCharCode(fileBuffer[i]);
-  }
-  return fileBufferString;
-}
+const encoder = new TextEncoder();
+const decoder = new TextDecoder();
+export const stringToUInt8Array = function(textString: string) {return encoder.encode(textString);};
+export const uInt8ArrayToString = function(fileBuffer: Uint8Array) {return decoder.decode(fileBuffer);};
 
 export async function getBuildDirectoryFileContent(
   workspaceFolder: Uri,

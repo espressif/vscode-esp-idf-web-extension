@@ -22,8 +22,9 @@ import {
   EventEmitter,
   Pseudoterminal,
   TerminalDimensions,
+  window,
 } from "vscode";
-import { uInt8ArrayToString } from "./utils";
+import { uInt8ArrayToString,stringToUInt8Array } from "./utils";
 
 export class SerialTerminal implements Pseudoterminal {
   private writeEmitter = new EventEmitter<string>();
@@ -31,6 +32,7 @@ export class SerialTerminal implements Pseudoterminal {
   private closeEmitter = new EventEmitter<number>();
   public onDidClose: Event<number> = this.closeEmitter.event;
   public closed = false;
+  private writer?: WritableStreamDefaultWriter<Uint8Array>;
 
   public constructor(protected transport: Transport) {}
 
@@ -74,6 +76,13 @@ export class SerialTerminal implements Pseudoterminal {
     // CTRL + ] signal to close IDF Monitor
     if (data === "\u001D") {
       this.closeEmitter.fire(0);
+    }
+    const writer = this.transport.device.writable?.getWriter();
+    if (writer) {
+      writer.write(stringToUInt8Array(data));
+      writer.releaseLock();
+    } else {
+      window.showErrorMessage("Unable to write to serial port");
     }
   }
 

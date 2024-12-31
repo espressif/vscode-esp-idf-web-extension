@@ -101,7 +101,7 @@ export async function flashTask(
   );
   outputChannel.show();
   const esploader = new ESPLoader(loaderOptions);
-  const chip = await esploader.main();
+  const chip = esploader.main();
   const flashSectionsMessage = await getFlashSectionsForCurrentWorkspace(
     workspaceFolder
   );
@@ -124,6 +124,7 @@ export async function flashTask(
       MD5(enc.Latin1.parse(image)).toString(),
   } as FlashOptions;
 
+  await chip;
   await esploader.writeFlash(flashOptions);
   progress.report({ message: `ESP-IDF Web Flashing done` });
   window.showInformationMessage(`ESP-IDF Web Flashing done.`);
