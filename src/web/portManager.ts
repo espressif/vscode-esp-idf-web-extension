@@ -42,10 +42,14 @@ export async function getSerialPort(disconnectCallback?: () => void) {
         disconnectCallback?.();
       });
     }
-  }
-  else if ((navigator as any).usb) {
-    window.showInformationMessage("WebSerial not supported. Polyfilling with WebUSB");
-    let device = (await commands.executeCommand('workbench.experimental.requestUsbDevice', {filters: [{classCode: 2,}]})) as USBDevice;
+  } else if ((navigator as any).usb) {
+    window.showInformationMessage(
+      "WebSerial not supported. Polyfilling with WebUSB"
+    );
+    let device = (await commands.executeCommand(
+      "workbench.experimental.requestUsbDevice",
+      { filters: [{ classCode: 2 }] }
+    )) as USBDevice;
     if (!device) {
       window.showInformationMessage("No device selected");
       return;
@@ -53,21 +57,20 @@ export async function getSerialPort(disconnectCallback?: () => void) {
     const ports = await (navigator as any).usb.getDevices();
     let usbPort = ports.find((item: USBDevice) => {
       return (
-        item.vendorId === device.vendorId &&
-        item.productId === device.productId
+        item.vendorId === device.vendorId && item.productId === device.productId
       );
     });
     (navigator as any).usb.addEventListener("disconnect", () => {
       disconnectCallback?.();
     });
-    const serialPortPollyfill = (await import("web-serial-polyfill")).SerialPort;
+    const serialPortPollyfill = (await import("web-serial-polyfill"))
+      .SerialPort;
     serialport = new serialPortPollyfill(usbPort as USBDevice, {
       protocol: 0,
       usbControlInterfaceClass: 2,
       usbTransferInterfaceClass: 10,
     }) as unknown as SerialPort;
-  }
-  else {
+  } else {
     window.showInformationMessage("WebSerial and WebUSB not supported.");
     return;
   }
@@ -92,6 +95,9 @@ export class IDFWebSerialPort {
     }
     if (this.instance && !this.statusBarItem) {
       this.createStatusBarItem(this.instance);
+      this.instance.addEventListener("disconnect", async (ev) => {
+        await IDFWebSerialPort.disconnect();
+      });
     }
     return this.instance;
   }
