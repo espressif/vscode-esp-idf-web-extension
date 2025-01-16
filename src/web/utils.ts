@@ -19,6 +19,9 @@
 import { FileType, StatusBarAlignment, Uri, window, workspace } from "vscode";
 import { FlashSectionMessage, PartitionInfo } from "./webserial";
 
+const encoder = new TextEncoder();
+export const stringToUInt8Array = function(textString: string) {return encoder.encode(textString);};
+
 export function uInt8ArrayToString(fileBuffer: Uint8Array) {
   let fileBufferString = "";
   for (let i = 0; i < fileBuffer.length; i++) {
