@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { Transport } from "esptool-js";
+import { Transport, UsbJtagSerialReset } from "esptool-js";
 import {
   Event,
   EventEmitter,
@@ -24,7 +24,7 @@ import {
   TerminalDimensions,
   window,
 } from "vscode";
-import { uInt8ArrayToString,stringToUInt8Array } from "./utils";
+import { uInt8ArrayToString,stringToUInt8Array, sleep } from "./utils";
 
 export class SerialTerminal implements Pseudoterminal {
   private writeEmitter = new EventEmitter<string>();
@@ -38,7 +38,6 @@ export class SerialTerminal implements Pseudoterminal {
   public async open(
     _initialDimensions: TerminalDimensions | undefined
   ): Promise<void> {
-    await this.transport.sleep(500);
     await this.reset();
     while (!this.closed) {
       const readLoop = this.transport.rawRead();
@@ -54,9 +53,14 @@ export class SerialTerminal implements Pseudoterminal {
 
   public async reset() {
     if (this.transport) {
+      new UsbJtagSerialReset(this.transport).reset();
+      await sleep(100);
+      // can also use SerialReset twice, but then the chip gets reset 1.5 times
+      await this.transport.setRTS(false);
       await this.transport.setDTR(false);
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await sleep(100);
       await this.transport.setDTR(true);
+      await this.transport.setRTS(false);
     }
   }
 
@@ -75,6 +79,9 @@ export class SerialTerminal implements Pseudoterminal {
     // CTRL + ] signal to close IDF Monitor
     if (data === "\u001D") {
       this.closeEmitter.fire(0);
+    }
+    if (data.charCodeAt(0) === 18) { // CTRL + r
+      this.reset();
     }
     const writer = this.transport.device.writable?.getWriter();
     if (writer) {
