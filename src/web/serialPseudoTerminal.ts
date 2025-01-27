@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { Transport, UsbJtagSerialReset } from "esptool-js";
+import { Transport } from "esptool-js";
 import {
   Event,
   EventEmitter,
@@ -24,7 +24,7 @@ import {
   TerminalDimensions,
   window,
 } from "vscode";
-import { uInt8ArrayToString,stringToUInt8Array, sleep } from "./utils";
+import { uInt8ArrayToString,stringToUInt8Array, universalReset } from "./utils";
 
 export class SerialTerminal implements Pseudoterminal {
   private writeEmitter = new EventEmitter<string>();
@@ -38,7 +38,7 @@ export class SerialTerminal implements Pseudoterminal {
   public async open(
     _initialDimensions: TerminalDimensions | undefined
   ): Promise<void> {
-    await this.reset();
+    await universalReset(this.transport);
     while (!this.closed) {
       const readLoop = this.transport.rawRead();
       const { value, done } = await readLoop.next();
@@ -48,19 +48,6 @@ export class SerialTerminal implements Pseudoterminal {
       }
       let valStr = uInt8ArrayToString(value);
       this.writeOutput(valStr);
-    }
-  }
-
-  public async reset() {
-    if (this.transport) {
-      new UsbJtagSerialReset(this.transport).reset();
-      await sleep(100);
-      // can also use SerialReset twice, but then the chip gets reset 1.5 times
-      await this.transport.setRTS(false);
-      await this.transport.setDTR(false);
-      await sleep(100);
-      await this.transport.setDTR(true);
-      await this.transport.setRTS(false);
     }
   }
 
@@ -81,7 +68,7 @@ export class SerialTerminal implements Pseudoterminal {
       this.closeEmitter.fire(0);
     }
     if (data.charCodeAt(0) === 18) { // CTRL + r
-      this.reset();
+      universalReset(this.transport);
     }
     const writer = this.transport.device.writable?.getWriter();
     if (writer) {

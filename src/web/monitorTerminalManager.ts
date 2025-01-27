@@ -17,9 +17,10 @@
  */
 
 import { Transport } from "esptool-js";
-import { Terminal, Uri, window, workspace } from "vscode";
-import { getMonitorBaudRate } from "./utils";
+import { Terminal, Uri, window } from "vscode";
+import { getMonitorBaudRate, handleMonitorError } from "./utils";
 import { SerialTerminal } from "./serialPseudoTerminal";
+import { OUTPUT_CHANNEL_NAME } from "./webserial";
 
 export const TERMINAL_NAME = "ESP-IDF Web Monitor";
 
@@ -63,8 +64,16 @@ export class IDFWebMonitorTerminal {
       pty: this.serialTerminal,
     });
     idfTerminal.show();
-    await transport.connect(monitorBaudRate, { baudRate: monitorBaudRate });
-    idfTerminal.sendText(`Opened with baud rate: ${monitorBaudRate}`);
+    try {
+      await transport.connect(monitorBaudRate, { baudRate: monitorBaudRate });
+      idfTerminal.sendText(`Opened with baud rate: ${monitorBaudRate}`);
+    }
+    catch (error) {
+      const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
+      handleMonitorError(outputChnl, error);
+      IDFWebMonitorTerminal.dispose();
+      return;
+    }
     return idfTerminal;
   }
 }
