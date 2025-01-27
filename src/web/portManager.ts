@@ -60,8 +60,8 @@ export async function getSerialPort(disconnectCallback?: () => void) {
     (navigator as any).usb.addEventListener("disconnect", () => {
       disconnectCallback?.();
     });
-    const serialPortPollyfill = (await import("web-serial-polyfill")).SerialPort;
-    serialport = new serialPortPollyfill(usbPort as USBDevice, {
+    const serialPortPolyfill = (await import("web-serial-polyfill")).SerialPort;
+    serialport = new serialPortPolyfill(usbPort as USBDevice, {
       protocol: 0,
       usbControlInterfaceClass: 2,
       usbTransferInterfaceClass: 10,
@@ -79,6 +79,7 @@ export class IDFWebSerialPort {
   public static statusBarItem: StatusBarItem | undefined;
 
   static async disposePort() {
+    window.showInformationMessage("Disposing port");
     this.instance = undefined;
     if (this.statusBarItem) {
       this.statusBarItem.dispose();
