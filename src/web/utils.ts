@@ -23,7 +23,7 @@ import { Transport, UsbJtagSerialReset } from "esptool-js";
 export const errorNotificationMessage =
   "Build file not found. Make sure to build your ESP-IDF project first and if 'idf.buildPath' is defined, that is correctly set.";
 // https://issues.chromium.org/issues/40137537
-const webUsbPolyfillClaimError = "Failed to execute 'claimInterface' on 'USBDevice': Unable to claim interface."
+const webUsbPolyfillClaimError = "Failed to execute 'claimInterface' on 'USBDevice': Unable to claim interface.";
 
 const encoder = new TextEncoder();
 export const stringToUInt8Array = function(textString: string) {return encoder.encode(textString);};
