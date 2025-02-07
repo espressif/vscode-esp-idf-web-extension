@@ -18,7 +18,6 @@
 
 import {
   CancellationToken,
-  FileSystemError,
   OutputChannel,
   Progress,
   ProgressLocation,
@@ -34,12 +33,10 @@ import {
   Transport,
 } from "esptool-js";
 import { enc, MD5 } from "crypto-js";
-import { getFlashSectionsForCurrentWorkspace } from "./utils";
+import { getFlashSectionsForCurrentWorkspace, handleMonitorError, universalReset } from "./utils";
 import { IDFWebMonitorTerminal } from "./monitorTerminalManager";
 
 export const OUTPUT_CHANNEL_NAME = "ESP-IDF Web";
-export const errorNotificationMessage =
-  "Build file not found. Make sure to build your ESP-IDF project first and if 'idf.buildPath' is defined, that is correctly set.";
 
 export interface PartitionInfo {
   name: string;
@@ -129,6 +126,7 @@ export async function flashTask(
   progress.report({ message: `ESP-IDF Web Flashing done` });
   window.showInformationMessage(`ESP-IDF Web Flashing done.`);
   outputChannel.appendLine(`ESP-IDF Web Flashing done`);
+  await universalReset(transport);
   if (transport) {
     await transport.disconnect();
   }
@@ -157,14 +155,7 @@ export async function flashWithWebSerial(
         await flashTask(workspaceFolder, port, progress, outputChnl);
       } catch (error: any) {
         isFlashing = false;
-        if (error instanceof FileSystemError && error.code === "FileNotFound") {
-          window.showErrorMessage(errorNotificationMessage);
-        }
-        outputChnl.appendLine(JSON.stringify(error));
-        const errMsg = error && error.message ? error.message : error;
-        outputChnl.appendLine(errMsg);
-        outputChnl.appendLine(errorNotificationMessage);
-        outputChnl.show();
+        handleMonitorError(outputChnl, error);
       }
     }
   );
@@ -195,14 +186,8 @@ export async function flashAndMonitor(workspaceFolder: Uri, port: SerialPort) {
         await IDFWebMonitorTerminal.init(workspaceFolder, transport);
       } catch (error: any) {
         isFlashing = false;
-        if (error instanceof FileSystemError && error.code === "FileNotFound") {
-          window.showErrorMessage(errorNotificationMessage);
-        }
-        outputChnl.appendLine(JSON.stringify(error));
-        const errMsg = error && error.message ? error.message : error;
-        outputChnl.appendLine(errMsg);
-        outputChnl.appendLine(errorNotificationMessage);
-        outputChnl.show();
+        handleMonitorError(outputChnl, error);
+        IDFWebMonitorTerminal.dispose();
       }
     }
   );
