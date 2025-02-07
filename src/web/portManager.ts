@@ -44,7 +44,6 @@ export async function getSerialPort(disconnectCallback?: () => void) {
     }
   }
   else if ((navigator as any).usb) {
-    window.showInformationMessage("WebSerial not supported. Polyfilling with WebUSB");
     let device = (await commands.executeCommand('workbench.experimental.requestUsbDevice', {filters: [{classCode: 2,}]})) as USBDevice;
     if (!device) {
       window.showInformationMessage("No device selected");
