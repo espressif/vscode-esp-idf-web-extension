@@ -66,7 +66,6 @@ export class IDFWebMonitorTerminal {
     idfTerminal.show();
     try {
       await transport.connect(monitorBaudRate, { baudRate: monitorBaudRate });
-      idfTerminal.sendText(`Opened with baud rate: ${monitorBaudRate}`);
     }
     catch (error) {
       const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
