@@ -41,7 +41,7 @@ export async function universalReset(transport: Transport) {
     return;
   }
   new UsbJtagSerialReset(transport).reset();
-  await sleep(100);
+  await sleep(200);
   // can also use SerialReset twice, but then the chip gets reset 1.5 times
   await transport.setRTS(false);
   await transport.setDTR(false);
