@@ -30,7 +30,9 @@ import { monitorWithWebserial } from "./monitor";
 const statusBarItems: { [key: string]: vscode.StatusBarItem } = {};
 
 export function activate(context: vscode.ExtensionContext) {
-  vscode.window.showInformationMessage("WebSerial not supported. Polyfilling with WebUSB");
+  if ((navigator as any).serial === undefined && (navigator as any).usb) { 
+    console.log("WebSerial not supported. Polyfilling with WebUSB");
+  }
   const flashDisposable = vscode.commands.registerCommand(
     "espIdfWeb.flash",
     async () => {
