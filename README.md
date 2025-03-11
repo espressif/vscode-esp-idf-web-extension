@@ -2,9 +2,68 @@
 
 Web extension of ESP-IDF for serial communication using [esptool-js](https://github.com/espressif/esptool-js) such as flash and monitor Espressif devices.
 
+How to use
+----------
+
+1. Open a workspace folder with an ESP-IDF project in CodeSpaces or VSCode Web.
+2. IF you are using Codespaces Install the [ESP-IDF extension](https://marketplace.visualstudio.com/items?itemName=espressif.esp-idf-extension) from the Visual Studio Code Marketplace.
+3. Install the [ESP-IDF Web Extension](https://marketplace.visualstudio.com/items?itemName=espressif.esp-idf-web) from the Visual Studio Code Marketplace.
+4. The ESP-IDF Web extension will show a status bar flash icon and a monitor icon.
+5. Press menu **View**, select **Command Palette...** and search for **ESP-IDF-Web Select serial port** command to select the serial port to use.
+6. A serial port icon will appear in the status bar with the selected serial port. You can also just run **ESP-IDF-Web Flash** or **ESP-IDF-Web Monitor** commands and it will ask you for the serial port to use.
+
+You can also configure a github ESP-IDF project for Codespaces with the ESP-IDF Web extension and the ESP-IDF extension installed by adding a `.devcontainer/devcontainer.json` file with the following content:
+
+```JSON
+  {
+    "name": "ESP-IDF Codespaces",
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "DOCKER_TAG": "v5.3-rc1"
+      }
+    },
+    "customizations": {
+      "vscode": {
+        "settings": {
+          "terminal.integrated.defaultProfile.linux": "bash",
+          "idf.espIdfPath": "/opt/esp/idf",
+          "idf.customExtraPaths": "",
+          "idf.toolsPath": "/opt/esp",
+          "idf.gitPath": "/usr/bin/git",
+          "idf.showOnboardingOnInit": false,
+          "extensions.ignoreRecommendations": true
+        },
+        "extensions": [
+          "espressif.esp-idf-extension",
+          "espressif.esp-idf-web"
+        ]
+      }
+    },
+    "runArgs": ["--privileged"]
+  }
+```
+
+and a `.devcontainer/Dockerfile` file with the following content:
+
+```DOCKERFILE
+  ARG DOCKER_TAG=latest
+  FROM espressif/idf:${DOCKER_TAG}
+
+  RUN echo "source /opt/esp/idf/export.sh > /dev/null 2>&1" >> ~/.bashrc
+
+  ENTRYPOINT [ "/opt/esp/entrypoint.sh" ]
+
+  CMD ["/bin/bash", "-c"]
+```
+
+After adding these files, just open the project in Codespaces and the ESP-IDF Web extension will be installed and ready to use.
+
+It might be necessary to manually install ESP-IDF-Web extension in Codespaces if it is not automatically installed.
+
 ## Commands
 
-Press menu **View**., select **Command Palette...** and search for these commands:
+Press menu **View**, select **Command Palette...** and search for these commands:
 
 `ESP-IDF-Web Flash`: Flash binaries from selected workspace to selected serial port. If no serial port was previously selected, it will ask the user for the serial port to use othewise use previously selected serial port.
 
