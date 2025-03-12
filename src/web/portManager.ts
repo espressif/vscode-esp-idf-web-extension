@@ -88,7 +88,16 @@ export class IDFWebSerialPort {
 
   static async init() {
     if (!this.instance) {
-      this.instance = await getSerialPort(()=>this.disposePort());
+      try {
+        this.instance = await getSerialPort(()=>this.disposePort());
+      } catch (e: any) {
+        if (e.name === "NotFoundError") {
+          window.showErrorMessage("No serial port selected");
+          return;
+        }
+        window.showErrorMessage(e.name + ": " + e.message);
+        return;
+      }
     }
     if (this.instance && !this.statusBarItem) {
       this.createStatusBarItem(this.instance);

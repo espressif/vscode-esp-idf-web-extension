@@ -24,7 +24,7 @@ import {
   TerminalDimensions,
   window,
 } from "vscode";
-import { uInt8ArrayToString,stringToUInt8Array, universalReset } from "./utils";
+import { uInt8ArrayToString,stringToUInt8Array, universalReset, sleep } from "./utils";
 
 export class SerialTerminal implements Pseudoterminal {
   private writeEmitter = new EventEmitter<string>();
@@ -39,6 +39,7 @@ export class SerialTerminal implements Pseudoterminal {
     _initialDimensions: TerminalDimensions | undefined
   ): Promise<void> {
     this.writeLine(`Opened with baud rate: ${this.transport.baudrate}`);
+    await sleep(100); // for JTAG on android
     await universalReset(this.transport);
     while (!this.closed) {
       const readLoop = this.transport.rawRead();
