@@ -39,7 +39,6 @@ export class SerialTerminal implements Pseudoterminal {
     _initialDimensions: TerminalDimensions | undefined
   ): Promise<void> {
     this.writeLine(`Opened with baud rate: ${this.transport.baudrate}`);
-    await this.transport.sleep(50);
     await universalReset(this.transport);
     while (!this.closed) {
       const readLoop = this.transport.rawRead();

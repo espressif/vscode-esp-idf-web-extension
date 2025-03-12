@@ -57,13 +57,6 @@ export class IDFWebMonitorTerminal {
       return;
     }
 
-    this.serialTerminal = new SerialTerminal(transport);
-
-    let idfTerminal = window.createTerminal({
-      name: TERMINAL_NAME,
-      pty: this.serialTerminal,
-    });
-    idfTerminal.show();
     try {
       await transport.connect(monitorBaudRate, { baudRate: monitorBaudRate });
     }
@@ -73,6 +66,12 @@ export class IDFWebMonitorTerminal {
       IDFWebMonitorTerminal.dispose();
       return;
     }
+    this.serialTerminal = new SerialTerminal(transport);
+    let idfTerminal = window.createTerminal({
+      name: TERMINAL_NAME,
+      pty: this.serialTerminal,
+    });
+    idfTerminal.show();
     return idfTerminal;
   }
 }
