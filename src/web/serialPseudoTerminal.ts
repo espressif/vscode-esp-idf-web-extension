@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { Transport, UsbJtagSerialReset } from "esptool-js";
+import { ClassicReset, Transport, UsbJtagSerialReset } from "esptool-js";
 import {
   Event,
   EventEmitter,
@@ -59,11 +59,8 @@ export class SerialTerminal implements Pseudoterminal {
       if (this.transport.getPid() === USB_JTAG_SERIAL_PID) {
         const usbJtagReset = new UsbJtagSerialReset(this.transport);
         await usbJtagReset.reset();
-        await this.transport.setDTR(false);
-        await this.transport.setRTS(true);
-        await new Promise((resolve) => setTimeout(resolve, 100));
-        await this.transport.setDTR(true);
-        await this.transport.setRTS(false);
+        const classicReset = new ClassicReset(this.transport, 50);
+        await classicReset.reset();
       } else {
         await this.transport.setDTR(false);
         await new Promise((resolve) => setTimeout(resolve, 100));
