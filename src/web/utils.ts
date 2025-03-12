@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { FileType, StatusBarAlignment, Uri, window, workspace } from "vscode";
+import { FileSystemError, FileType, OutputChannel, StatusBarAlignment, Uri, window, workspace } from "vscode";
 import { FlashSectionMessage, PartitionInfo } from "./webserial";
 
 const encoder = new TextEncoder();
@@ -28,6 +28,32 @@ export function uInt8ArrayToString(fileBuffer: Uint8Array) {
     fileBufferString += String.fromCharCode(fileBuffer[i]);
   }
   return fileBufferString;
+}
+
+export const errorNotificationMessage =
+   "Build file not found. Make sure to build your ESP-IDF project first and if 'idf.buildPath' is defined, that is correctly set.";
+// https://issues.chromium.org/issues/40137537
+const webUsbPolyfillClaimError = "Failed to execute 'claimInterface' on 'USBDevice': Unable to claim interface.";
+
+export function handleMonitorError(outputChnl: OutputChannel, error: any) {
+  const rawMessage = (error as Error).message.replace("Error setting up device: ", "");
+  const errorType = rawMessage.split(":")[0];
+  const errorMessage = rawMessage.replace(`${errorType}: `, "");
+  outputChnl.show();
+  outputChnl.appendLine("\n");
+  if (error instanceof FileSystemError && error.code === "FileNotFound") {
+    window.showErrorMessage(errorNotificationMessage);
+    outputChnl.appendLine(errorNotificationMessage);
+    return;
+  } else if (errorMessage === webUsbPolyfillClaimError) {
+    if ((navigator as any).serial) {
+      outputChnl.appendLine("Failed to claim interface. Please detach the device from any app that is using it.");
+    } else {
+      outputChnl.appendLine("Failed to claim interface. Please open the device in a terminal app to detach the driver.");
+    }
+    return;
+  }
+  outputChnl.appendLine(rawMessage);
 }
 
 export async function getBuildDirectoryFileContent(

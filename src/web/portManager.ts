@@ -78,7 +78,7 @@ export class IDFWebSerialPort {
   private static instance: SerialPort | undefined;
   public static statusBarItem: StatusBarItem | undefined;
 
-  static async disposePort() {
+  static disposePort() {
     this.instance = undefined;
     if (this.statusBarItem) {
       this.statusBarItem.dispose();
@@ -88,7 +88,7 @@ export class IDFWebSerialPort {
 
   static async init() {
     if (!this.instance) {
-      this.instance = await getSerialPort(()=>this.disposePort());
+      this.instance = await getSerialPort(()=> this.disposePort());
     }
     if (this.instance && !this.statusBarItem) {
       this.createStatusBarItem(this.instance);

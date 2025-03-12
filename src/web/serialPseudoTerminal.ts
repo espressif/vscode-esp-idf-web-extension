@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-import { Transport } from "esptool-js";
+import { Transport, UsbJtagSerialReset } from "esptool-js";
 import {
   Event,
   EventEmitter,
@@ -24,7 +24,7 @@ import {
   TerminalDimensions,
   window,
 } from "vscode";
-import { uInt8ArrayToString,stringToUInt8Array } from "./utils";
+import { uInt8ArrayToString, stringToUInt8Array } from "./utils";
 
 export class SerialTerminal implements Pseudoterminal {
   private writeEmitter = new EventEmitter<string>();
@@ -44,7 +44,7 @@ export class SerialTerminal implements Pseudoterminal {
     while (!this.closed) {
       const readLoop = this.transport.rawRead();
       const { value, done } = await readLoop.next();
-  
+
       if (done || !value) {
         break;
       }
@@ -54,11 +54,27 @@ export class SerialTerminal implements Pseudoterminal {
   }
 
   public async reset() {
+    const USB_JTAG_SERIAL_PID = 0x1001;
     if (this.transport) {
-      await this.transport.setDTR(false);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await this.transport.setDTR(true);
+      if (this.transport.getPid() === USB_JTAG_SERIAL_PID) {
+        const usbJtagReset = new UsbJtagSerialReset(this.transport);
+        await usbJtagReset.reset();
+        await this.transport.setDTR(false);
+        await this.transport.setRTS(true);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await this.transport.setDTR(true);
+        await this.transport.setRTS(false);
+      } else {
+        await this.transport.setDTR(false);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        await this.transport.setDTR(true);
+      }
     }
+    // if (this.transport) {
+    //   await this.transport.setDTR(false);
+    //   await new Promise((resolve) => setTimeout(resolve, 100));
+    //   await this.transport.setDTR(true);
+    // }
   }
 
   public async close() {
@@ -68,7 +84,6 @@ export class SerialTerminal implements Pseudoterminal {
     }
     if (this.transport.device.readable) {
       await this.transport.disconnect();
-      await this.transport.waitForUnlock(1500);
     }
   }
 

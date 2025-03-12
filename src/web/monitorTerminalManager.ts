@@ -18,8 +18,9 @@
 
 import { Transport } from "esptool-js";
 import { Terminal, Uri, window, workspace } from "vscode";
-import { getMonitorBaudRate } from "./utils";
+import { getMonitorBaudRate, handleMonitorError } from "./utils";
 import { SerialTerminal } from "./serialPseudoTerminal";
+import { OUTPUT_CHANNEL_NAME } from "./webserial";
 
 export const TERMINAL_NAME = "ESP-IDF Web Monitor";
 
@@ -43,6 +44,7 @@ export class IDFWebMonitorTerminal {
 
   static async dispose() {
     await this.serialTerminal?.close();
+    window.showInformationMessage("Monitor terminal closed");
     this.instance = undefined;
     this.serialTerminal = undefined;
   }
@@ -63,7 +65,14 @@ export class IDFWebMonitorTerminal {
       pty: this.serialTerminal,
     });
     idfTerminal.show();
-    await transport.connect(monitorBaudRate, { baudRate: monitorBaudRate });
+    try {
+      await transport.connect(monitorBaudRate, { baudRate: monitorBaudRate });
+    } catch (error) {
+      const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
+      handleMonitorError(outputChnl, error);
+      IDFWebMonitorTerminal.dispose();
+      return;
+    }
     return idfTerminal;
   }
 }

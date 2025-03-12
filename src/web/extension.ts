@@ -23,7 +23,7 @@ import {
   isFlashing,
 } from "./webserial";
 import { IDFWebSerialPort } from "./portManager";
-import { createStatusBarItem, sleep } from "./utils";
+import { createStatusBarItem } from "./utils";
 import { IDFWebMonitorTerminal } from "./monitorTerminalManager";
 import { monitorWithWebserial } from "./monitor";
 

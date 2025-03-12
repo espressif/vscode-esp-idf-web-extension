@@ -34,7 +34,7 @@ import {
   Transport,
 } from "esptool-js";
 import { enc, MD5 } from "crypto-js";
-import { getFlashSectionsForCurrentWorkspace } from "./utils";
+import { getFlashSectionsForCurrentWorkspace, handleMonitorError } from "./utils";
 import { IDFWebMonitorTerminal } from "./monitorTerminalManager";
 
 export const OUTPUT_CHANNEL_NAME = "ESP-IDF Web";
@@ -157,14 +157,7 @@ export async function flashWithWebSerial(
         await flashTask(workspaceFolder, port, progress, outputChnl);
       } catch (error: any) {
         isFlashing = false;
-        if (error instanceof FileSystemError && error.code === "FileNotFound") {
-          window.showErrorMessage(errorNotificationMessage);
-        }
-        outputChnl.appendLine(JSON.stringify(error));
-        const errMsg = error && error.message ? error.message : error;
-        outputChnl.appendLine(errMsg);
-        outputChnl.appendLine(errorNotificationMessage);
-        outputChnl.show();
+        handleMonitorError(outputChnl, error);
       }
     }
   );
@@ -195,14 +188,8 @@ export async function flashAndMonitor(workspaceFolder: Uri, port: SerialPort) {
         await IDFWebMonitorTerminal.init(workspaceFolder, transport);
       } catch (error: any) {
         isFlashing = false;
-        if (error instanceof FileSystemError && error.code === "FileNotFound") {
-          window.showErrorMessage(errorNotificationMessage);
-        }
-        outputChnl.appendLine(JSON.stringify(error));
-        const errMsg = error && error.message ? error.message : error;
-        outputChnl.appendLine(errMsg);
-        outputChnl.appendLine(errorNotificationMessage);
-        outputChnl.show();
+        handleMonitorError(outputChnl, error);
+        IDFWebMonitorTerminal.dispose();
       }
     }
   );
