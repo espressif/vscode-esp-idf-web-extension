@@ -70,11 +70,6 @@ export class SerialTerminal implements Pseudoterminal {
         await this.transport.setDTR(true);
       }
     }
-    // if (this.transport) {
-    //   await this.transport.setDTR(false);
-    //   await new Promise((resolve) => setTimeout(resolve, 100));
-    //   await this.transport.setDTR(true);
-    // }
   }
 
   public async close() {
@@ -84,6 +79,7 @@ export class SerialTerminal implements Pseudoterminal {
     }
     if (this.transport.device.readable) {
       await this.transport.disconnect();
+      await this.transport.waitForUnlock(1500);
     }
   }
 

@@ -44,7 +44,6 @@ export class IDFWebMonitorTerminal {
 
   static async dispose() {
     await this.serialTerminal?.close();
-    window.showInformationMessage("Monitor terminal closed");
     this.instance = undefined;
     this.serialTerminal = undefined;
   }
