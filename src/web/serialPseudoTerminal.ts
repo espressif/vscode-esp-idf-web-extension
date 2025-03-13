@@ -24,7 +24,7 @@ import {
   TerminalDimensions,
   window,
 } from "vscode";
-import { uInt8ArrayToString,stringToUInt8Array } from "./utils";
+import { uInt8ArrayToString,stringToUInt8Array, universalReset, sleep } from "./utils";
 
 export class SerialTerminal implements Pseudoterminal {
   private writeEmitter = new EventEmitter<string>();
@@ -39,8 +39,8 @@ export class SerialTerminal implements Pseudoterminal {
     _initialDimensions: TerminalDimensions | undefined
   ): Promise<void> {
     this.writeLine(`Opened with baud rate: ${this.transport.baudrate}`);
-    await this.transport.sleep(500);
-    await this.reset();
+    await sleep(100); // for JTAG on android
+    await universalReset(this.transport);
     while (!this.closed) {
       const readLoop = this.transport.rawRead();
       const { value, done } = await readLoop.next();
@@ -50,14 +50,6 @@ export class SerialTerminal implements Pseudoterminal {
       }
       let valStr = uInt8ArrayToString(value);
       this.writeOutput(valStr);
-    }
-  }
-
-  public async reset() {
-    if (this.transport) {
-      await this.transport.setDTR(false);
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await this.transport.setDTR(true);
     }
   }
 
@@ -76,6 +68,9 @@ export class SerialTerminal implements Pseudoterminal {
     // CTRL + ] signal to close IDF Monitor
     if (data === "\u001D") {
       this.closeEmitter.fire(0);
+    }
+    if (data.charCodeAt(0) === 18) { // CTRL + r
+      universalReset(this.transport);
     }
     const writer = this.transport.device.writable?.getWriter();
     if (writer) {

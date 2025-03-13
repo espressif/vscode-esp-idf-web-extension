@@ -16,8 +16,14 @@
  * limitations under the License.
  */
 
-import { FileType, StatusBarAlignment, Uri, window, workspace } from "vscode";
+import { FileType, StatusBarAlignment, Uri, window, workspace, FileSystemError, OutputChannel } from "vscode";
 import { FlashSectionMessage, PartitionInfo } from "./webserial";
+import { Transport, UsbJtagSerialReset } from "esptool-js";
+
+export const errorNotificationMessage =
+  "Build file not found. Make sure to build your ESP-IDF project first and if 'idf.buildPath' is defined, that is correctly set.";
+// https://issues.chromium.org/issues/40137537
+const webUsbPolyfillClaimError = "Failed to execute 'claimInterface' on 'USBDevice': Unable to claim interface.";
 
 const encoder = new TextEncoder();
 export const stringToUInt8Array = function(textString: string) {return encoder.encode(textString);};
@@ -28,6 +34,47 @@ export function uInt8ArrayToString(fileBuffer: Uint8Array) {
     fileBufferString += String.fromCharCode(fileBuffer[i]);
   }
   return fileBufferString;
+}
+
+export async function universalReset(transport: Transport) {
+  if (!transport) {
+    return;
+  }
+  if ((navigator as any).serial !== undefined) { // WebSerial
+    await transport.setDTR(false);
+    await sleep(100);
+    await transport.setDTR(true);
+  } else { // WebUSB polyfill
+    new UsbJtagSerialReset(transport).reset();
+    await sleep(100);
+    // can also use SerialReset twice, but then the chip gets reset 1.5 times
+    await transport.setRTS(false);
+    await transport.setDTR(false);
+    await sleep(100);
+    await transport.setDTR(true);
+    await transport.setRTS(false);
+  }
+}
+
+export async function handleMonitorError(outputChnl: OutputChannel, error: any) {
+  const rawMessage = (error as Error).message.replace("Error setting up device: ", "");
+  const errorType = rawMessage.split(":")[0];
+  const errorMessage = rawMessage.replace(`${errorType}: `, "");
+  outputChnl.show();
+  outputChnl.appendLine("\n");
+  if (error instanceof FileSystemError && error.code === "FileNotFound") {
+    window.showErrorMessage(errorNotificationMessage);
+    outputChnl.appendLine(errorNotificationMessage);
+    return;
+  } else if (errorMessage === webUsbPolyfillClaimError) {
+    if ((navigator as any).serial) {
+      outputChnl.appendLine("Failed to claim interface. Please detach the device from any app that is using it.");
+    } else {
+      outputChnl.appendLine("Failed to claim interface. Please open the device in a terminal app to detach the driver.");
+    }
+    return;
+  }
+  outputChnl.appendLine(rawMessage);
 }
 
 export async function getBuildDirectoryFileContent(

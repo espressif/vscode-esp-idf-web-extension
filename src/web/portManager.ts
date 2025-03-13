@@ -44,7 +44,6 @@ export async function getSerialPort(disconnectCallback?: () => void) {
     }
   }
   else if ((navigator as any).usb) {
-    window.showInformationMessage("WebSerial not supported. Polyfilling with WebUSB");
     let device = (await commands.executeCommand('workbench.experimental.requestUsbDevice', {filters: [{classCode: 2,}]})) as USBDevice;
     if (!device) {
       window.showInformationMessage("No device selected");
@@ -60,8 +59,8 @@ export async function getSerialPort(disconnectCallback?: () => void) {
     (navigator as any).usb.addEventListener("disconnect", () => {
       disconnectCallback?.();
     });
-    const serialPortPollyfill = (await import("web-serial-polyfill")).SerialPort;
-    serialport = new serialPortPollyfill(usbPort as USBDevice, {
+    const serialPortPolyfill = (await import("web-serial-polyfill")).SerialPort;
+    serialport = new serialPortPolyfill(usbPort as USBDevice, {
       protocol: 0,
       usbControlInterfaceClass: 2,
       usbTransferInterfaceClass: 10,
@@ -79,6 +78,7 @@ export class IDFWebSerialPort {
   public static statusBarItem: StatusBarItem | undefined;
 
   static async disposePort() {
+    window.showInformationMessage("Disposing port");
     this.instance = undefined;
     if (this.statusBarItem) {
       this.statusBarItem.dispose();
@@ -88,7 +88,16 @@ export class IDFWebSerialPort {
 
   static async init() {
     if (!this.instance) {
-      this.instance = await getSerialPort(()=>this.disposePort());
+      try {
+        this.instance = await getSerialPort(()=>this.disposePort());
+      } catch (e: any) {
+        if (e.name === "NotFoundError") {
+          window.showErrorMessage("No serial port selected");
+          return;
+        }
+        window.showErrorMessage(e.name + ": " + e.message);
+        return;
+      }
     }
     if (this.instance && !this.statusBarItem) {
       this.createStatusBarItem(this.instance);
