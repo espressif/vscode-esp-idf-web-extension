@@ -2,13 +2,73 @@
 
 Web extension of ESP-IDF for serial communication using [esptool-js](https://github.com/espressif/esptool-js) such as flash and monitor Espressif devices.
 
+How to use
+----------
+
+1. Open a workspace folder with an ESP-IDF project in CodeSpaces or VSCode Web.
+2. If you are using Codespaces, Install the [ESP-IDF extension](https://marketplace.visualstudio.com/items?itemName=espressif.esp-idf-extension) from the Visual Studio Code Marketplace.
+3. Install the [ESP-IDF Web Extension](https://marketplace.visualstudio.com/items?itemName=espressif.esp-idf-web) from the Visual Studio Code Marketplace. Make sure that ESP-IDF Web Extension is installed in the Web section of vscode extension tab.
+4. The ESP-IDF Web extension will show a status bar flash icon and a monitor icon.
+5. (OPTIONAL) Press menu **View**, select **Command Palette...** and search for **ESP-IDF-Web Select serial port** command to select the serial port to use. An icon will appear in the status bar with the selected serial port PID and VID ![serialPort](./media/serialPort.png). The currently selected port can be reused for flash and monitor commands until it is disposed.
+6. Run **ESP-IDF-Web Flash** ![flash](./media/flash.png), **ESP-IDF-Web Monitor** ![monitor](./media/monitor.png) or **ESP-IDF-Web Flash and Monitor** commands. The browser will ask you for the serial port to use if not selected before (step 5).
+7. Run **ESP-IDF-Web Disconnect serial port** or click at the serial port icon in the status bar ![serialPort](./media/serialPort.png) to dispose the current serial port.
+
+You can also configure a github ESP-IDF project for Codespaces with the ESP-IDF Web extension and the ESP-IDF extension installed by adding a `.devcontainer/devcontainer.json` file with the following content:
+
+```JSON
+  {
+    "name": "ESP-IDF Codespaces",
+    "build": {
+      "dockerfile": "Dockerfile",
+      "args": {
+        "DOCKER_TAG": "v5.3-rc1"
+      }
+    },
+    "customizations": {
+      "vscode": {
+        "settings": {
+          "terminal.integrated.defaultProfile.linux": "bash",
+          "idf.espIdfPath": "/opt/esp/idf",
+          "idf.customExtraPaths": "",
+          "idf.toolsPath": "/opt/esp",
+          "idf.gitPath": "/usr/bin/git",
+          "idf.showOnboardingOnInit": false,
+          "extensions.ignoreRecommendations": true
+        },
+        "extensions": [
+          "espressif.esp-idf-extension",
+          "espressif.esp-idf-web"
+        ]
+      }
+    },
+    "runArgs": ["--privileged"]
+  }
+```
+
+and a `.devcontainer/Dockerfile` file with the following content:
+
+```DOCKERFILE
+  ARG DOCKER_TAG=latest
+  FROM espressif/idf:${DOCKER_TAG}
+
+  RUN echo "source /opt/esp/idf/export.sh > /dev/null 2>&1" >> ~/.bashrc
+
+  ENTRYPOINT [ "/opt/esp/entrypoint.sh" ]
+
+  CMD ["/bin/bash", "-c"]
+```
+
+After adding these files, just open the project in Codespaces ready to use. Make sure to build the project first using the ESP-IDF extension.
+
+It might be necessary to manually install `ESP-IDF-Web extension` in Codespaces if it is not automatically installed.
+
 ## Commands
 
-Press menu **View**., select **Command Palette...** and search for these commands:
+Press menu **View**, select **Command Palette...** and search for these commands:
 
-`ESP-IDF-Web Flash`: Flash binaries from selected workspace to selected serial port. If no serial port was previously selected, it will ask the user for the serial port to use othewise use previously selected serial port.
+`ESP-IDF-Web Flash` ![flash](./media/flash.png): Flash binaries from selected workspace to selected serial port. If no serial port was previously selected, it will ask the user for the serial port to use othewise use previously selected serial port.
 
-`ESP-IDF-Web Monitor`: Start a serial monitor terminal connected to the selected serial port. If no serial port was previously selected, it will ask the user for the serial port to use othewise use previously selected serial port.
+`ESP-IDF-Web Monitor` ![monitor](./media/monitor.png): Start a serial monitor terminal connected to the selected serial port. If no serial port was previously selected, it will ask the user for the serial port to use othewise use previously selected serial port.
 
 `ESP-IDF-Web Flash and Monitor`: Flash binaries from selected workspace folder to selected serial port and start a serial monitor terminal to selected serial port. If no serial port was previously selected, it will ask the user for the serial port to use othewise use previously selected serial port.
 
