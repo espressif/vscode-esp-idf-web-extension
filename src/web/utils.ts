@@ -20,13 +20,15 @@ import { FileType, StatusBarAlignment, Uri, window, workspace, FileSystemError, 
 import { FlashSectionMessage, PartitionInfo } from "./webserial";
 import { Transport, UsbJtagSerialReset } from "esptool-js";
 
+const USB_JTAG_SERIAL_PID = 0x1001;
+
 export const errorNotificationMessage =
   "Build file not found. Make sure to build your ESP-IDF project first and if 'idf.buildPath' is defined, that is correctly set.";
 // https://issues.chromium.org/issues/40137537
 const webUsbPolyfillClaimError = "Failed to execute 'claimInterface' on 'USBDevice': Unable to claim interface.";
 
 const encoder = new TextEncoder();
-export const stringToUInt8Array = function(textString: string) {return encoder.encode(textString);};
+export const stringToUInt8Array = function (textString: string) { return encoder.encode(textString); };
 
 export function uInt8ArrayToString(fileBuffer: Uint8Array) {
   let fileBufferString = "";
@@ -46,6 +48,9 @@ export async function universalReset(transport: Transport) {
     await transport.setDTR(true);
   } else { // WebUSB polyfill
     new UsbJtagSerialReset(transport).reset();
+    if (transport.getPid() === USB_JTAG_SERIAL_PID) {
+      await sleep(100);
+    }
     await sleep(100);
     // can also use SerialReset twice, but then the chip gets reset 1.5 times
     await transport.setRTS(false);
