@@ -2,6 +2,14 @@
 
 All notable changes to the ESP-IDF Web Extension for VS Code will be documented in this file.
 
+## [0.0.4]
+- [Fix device disconnect callback](https://github.com/espressif/vscode-esp-idf-web-extension/pull/18) Thanks @archef2000
+- [Add monitor input functionality use native api string conversion](https://github.com/espressif/vscode-esp-idf-web-extension/pull/19) Thanks @archef2000
+- [Fix monitor opened message](https://github.com/espressif/vscode-esp-idf-web-extension/pull/20)
+- [Fix JTAG Monitor add universal reset](https://github.com/espressif/vscode-esp-idf-web-extension/pull/21) Thanks @archef2000
+- [Add How to use readme](https://github.com/espressif/vscode-esp-idf-web-extension/pull/22)
+- [Add longer jtag reset time](https://github.com/espressif/vscode-esp-idf-web-extension/pull/24) Thanks @archef2000
+
 ## [0.0.3]
 - [Webserial Polyfill with WebUSB](https://github.com/espressif/vscode-esp-idf-web-extension/pull/7) Thanks @archef2000
 - [Fix Windows path](https://github.com/espressif/vscode-esp-idf-web-extension/pull/8)
