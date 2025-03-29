@@ -21,6 +21,7 @@ import { Terminal, Uri, window } from "vscode";
 import { getMonitorBaudRate, handleMonitorError } from "./utils";
 import { SerialTerminal } from "./serialPseudoTerminal";
 import { OUTPUT_CHANNEL_NAME } from "./webserial";
+import { AddressDecoder } from "./panic_decoder";
 
 export const TERMINAL_NAME = "ESP-IDF Web Monitor";
 
@@ -29,6 +30,7 @@ export class IDFWebMonitorTerminal {
   private static serialTerminal: SerialTerminal | undefined;
 
   static async init(workspaceFolder: Uri, transport: Transport) {
+    AddressDecoder.update(workspaceFolder);
     if (!this.instance) {
       this.instance = await this.createMonitorTerminal(
         workspaceFolder,

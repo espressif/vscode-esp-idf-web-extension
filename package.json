@@ -144,6 +144,7 @@
     "@types/w3c-web-usb": "^1.0.10",
     "crypto-js": "^4.2.0",
     "esptool-js": "^0.5.4",
+    "jselftools": "^0.2.0",
     "web-serial-polyfill": "^1.0.15"
   }
 }
