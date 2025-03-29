@@ -2226,6 +2226,11 @@ js-yaml@4.1.0, js-yaml@^4.1.0:
   dependencies:
     argparse "^2.0.1"
 
+jselftools@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/jselftools/-/jselftools-0.2.0.tgz#e2fa0630319a97af36ea4417351edb8e7b1ad9b6"
+  integrity sha512-x6guZAw4tY0gLXWNiiSzctJfkATVte9HfvjGAUIMLtBAIJ14vxrYCBp7EuEegXsVaECixxUYd2NNry/GTqhd+Q==
+
 json-buffer@3.0.1:
   version "3.0.1"
   resolved "https://registry.yarnpkg.com/json-buffer/-/json-buffer-3.0.1.tgz#9338802a30d3b6605fbe0613e094008ca8c05a13"

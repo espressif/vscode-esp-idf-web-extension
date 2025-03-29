@@ -25,6 +25,7 @@ import {
   window,
 } from "vscode";
 import { uInt8ArrayToString,stringToUInt8Array, universalReset, sleep } from "./utils";
+import { AddressDecoder } from "./panic_decoder";
 
 export class SerialTerminal implements Pseudoterminal {
   private writeEmitter = new EventEmitter<string>();
@@ -41,6 +42,8 @@ export class SerialTerminal implements Pseudoterminal {
     this.writeLine(`Opened with baud rate: ${this.transport.baudrate}`);
     await sleep(100); // for JTAG on android
     await universalReset(this.transport);
+    var lastLine = "";
+    var panicking: boolean = false;
     while (!this.closed) {
       const readLoop = this.transport.rawRead();
       const { value, done } = await readLoop.next();
@@ -49,7 +52,18 @@ export class SerialTerminal implements Pseudoterminal {
         break;
       }
       let valStr = uInt8ArrayToString(value);
-      this.writeOutput(valStr);
+      const output = (line: string) => {
+        this.writeLine(line);
+      };
+      lastLine += valStr;
+      var splitLine = lastLine.split("\r\n");
+      while (splitLine.length > 1) {
+        const line = splitLine.shift();
+        if (line !== undefined) {
+          AddressDecoder.parser(line, output);
+        }
+      }
+      lastLine = splitLine[0];
     }
   }
 

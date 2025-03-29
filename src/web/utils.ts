@@ -82,7 +82,7 @@ export async function handleMonitorError(outputChnl: OutputChannel, error: any) 
   outputChnl.appendLine(rawMessage);
 }
 
-export async function getBuildDirectoryFileContent(
+async function getBuildDirectoryFile(
   workspaceFolder: Uri,
   ...fileRelativeToBuildPath: string[]
 ) {
@@ -112,8 +112,21 @@ export async function getBuildDirectoryFileContent(
   if (projDescStat.type !== FileType.File) {
     throw new Error(`${resultFilePath} does not exists.`);
   }
-  const resultFileContent = await workspace.fs.readFile(resultFilePath);
-  return uInt8ArrayToString(resultFileContent);
+  return workspace.fs.readFile(resultFilePath);
+}
+
+export async function getBuildDirectoryFileContent(
+  workspaceFolder: Uri,
+  ...fileRelativeToBuildPath: string[]
+) {
+  return uInt8ArrayToString(await getBuildDirectoryFile(workspaceFolder, ...fileRelativeToBuildPath));
+}
+
+export async function getBuildDirectoryFileBuffer(
+  workspaceFolder: Uri,
+  ...fileRelativeToBuildPath: string[]
+) {
+  return (await getBuildDirectoryFile(workspaceFolder, ...fileRelativeToBuildPath)).buffer;
 }
 
 export async function getMonitorBaudRate(workspaceFolder: Uri) {
@@ -146,6 +159,27 @@ export async function getFlashSectionsForCurrentWorkspace(workspaceFolder: Uri) 
     flashSize: flashFileJson["flash_settings"]["flash_size"],
   };
   return message;
+}
+
+export async function getSHA256(arrayBuffer: ArrayBufferLike) {
+  const hashBuffer = await crypto.subtle.digest('SHA-256', arrayBuffer);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+}
+
+export async function getBuildElfFileContent(workspaceFolder: Uri) {
+  const projDescContentStr = await getBuildDirectoryFileContent(
+    workspaceFolder,
+    "project_description.json"
+  );
+  const projDescFileJson = JSON.parse(projDescContentStr);
+  const appElfFileName = projDescFileJson["app_elf"];
+  const appElfFileContent = await getBuildDirectoryFileBuffer(
+    workspaceFolder,
+    appElfFileName
+  );
+  return appElfFileContent;
 }
 
 export async function readFileIntoBuffer(
