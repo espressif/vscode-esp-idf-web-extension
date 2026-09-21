@@ -17,7 +17,12 @@
  */
 
 import * as vscode from "vscode";
-import { flashAndMonitor, flashWithWebSerial, isFlashing } from "./webserial";
+import {
+  eraseFlash,
+  flashAndMonitor,
+  flashWithWebSerial,
+  isFlashing,
+} from "./webserial";
 import { IDFWebSerialPort } from "./portManager";
 import { createStatusBarItem, getOutputChannel } from "./utils";
 import { IDFWebMonitorTerminal } from "./monitorTerminalManager";
@@ -114,6 +119,21 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
   context.subscriptions.push(disposePort);
+
+  const eraseFlashCmd = vscode.commands.registerCommand(
+    "espIdfWeb.eraseFlash",
+    async () => {
+      let workspaceFolder = await getWorkspaceFolder();
+      if (!workspaceFolder) {
+        return;
+      }
+      const port = await IDFWebSerialPort.init();
+      if (port) {
+        await eraseFlash(workspaceFolder.uri, port);
+      }
+    }
+  );
+  context.subscriptions.push(eraseFlashCmd);
 
   createStatusBarItems();
   context.subscriptions.push(

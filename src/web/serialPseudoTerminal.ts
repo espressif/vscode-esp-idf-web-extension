@@ -24,7 +24,12 @@ import {
   TerminalDimensions,
   window,
 } from "vscode";
-import { uInt8ArrayToString,stringToUInt8Array, universalReset, sleep } from "./utils";
+import {
+  stringToUInt8Array,
+  uInt8ArrayToString,
+  universalReset,
+  sleep,
+} from "./utils";
 
 /**
  * IDF Monitor–style auto-coloring: inject ANSI codes by log level (E/W/I) so colors
@@ -52,7 +57,11 @@ function idfLevelColor(line: string): string | undefined {
   if (!match) {
     return undefined;
   }
-  return match[1] === "E" ? ansi.red : match[1] === "W" ? ansi.yellow : ansi.green;
+  return match[1] === "E"
+    ? ansi.red
+    : match[1] === "W"
+      ? ansi.yellow
+      : ansi.green;
 }
 
 export class SerialTerminal implements Pseudoterminal {
@@ -68,10 +77,10 @@ export class SerialTerminal implements Pseudoterminal {
   public constructor(protected transport: Transport) {}
 
   public async open(
-    _initialDimensions: TerminalDimensions | undefined
+    _initialDimensions: TerminalDimensions | undefined,
   ): Promise<void> {
     this.writeLine(
-      `Opened ${describePort(this.transport)} with baud rate: ${this.transport.baudrate}`
+      `Opened ${describePort(this.transport)} with baud rate: ${this.transport.baudrate}`,
     );
     try {
       await sleep(100); // for JTAG on android
@@ -79,14 +88,14 @@ export class SerialTerminal implements Pseudoterminal {
       // failing reset cannot keep the read loop from ever starting.
       const reading = this.transport.rawRead(
         (value) => this.writeSerialChunk(uInt8ArrayToString(value)),
-        () => this.closed
+        () => this.closed,
       );
       await universalReset(this.transport);
       await reading;
       this.flushSerialBuffer();
     } catch (error) {
       this.writeLine(
-        `Monitor error: ${error instanceof Error ? error.message : String(error)}`
+        `Monitor error: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -108,7 +117,8 @@ export class SerialTerminal implements Pseudoterminal {
     if (data === "\u001D") {
       this.closeEmitter.fire(0);
     }
-    if (data.charCodeAt(0) === 18) { // CTRL + r
+    if (data.charCodeAt(0) === 18) {
+      // CTRL + r
       universalReset(this.transport);
     }
     const writer = this.transport.device.writable?.getWriter();
@@ -132,7 +142,11 @@ export class SerialTerminal implements Pseudoterminal {
         const lineEnd = text.indexOf("\n");
         const head = lineEnd === -1 ? text : text.slice(0, lineEnd);
         const color = idfLevelColor(head);
-        if (!color && lineEnd === -1 && IDF_LOG_HEADER_PREFIX_REGEX.test(head)) {
+        if (
+          !color &&
+          lineEnd === -1 &&
+          IDF_LOG_HEADER_PREFIX_REGEX.test(head)
+        ) {
           // Hold only the few bytes needed to tell whether this line is an IDF log.
           this.headerBuffer = head;
           return;
