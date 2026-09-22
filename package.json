@@ -128,7 +128,7 @@
     "@types/webpack-env": "^1.18.5",
     "@typescript-eslint/eslint-plugin": "^7.11.0",
     "@typescript-eslint/parser": "^7.11.0",
-    "@vscode/test-web": "^0.0.60",
+    "@vscode/test-web": "^0.0.81",
     "assert": "^2.1.0",
     "eslint": "^8.57.0",
     "mocha": "^10.4.0",
@@ -143,7 +143,7 @@
   "dependencies": {
     "@types/w3c-web-usb": "^1.0.10",
     "crypto-js": "^4.2.0",
-    "esptool-js": "^0.5.4",
+    "esptool-js": "^0.7.0",
     "web-serial-polyfill": "^1.0.15"
   }
 }

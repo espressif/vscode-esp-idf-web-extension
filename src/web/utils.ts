@@ -18,9 +18,7 @@
 
 import { FileType, StatusBarAlignment, Uri, window, workspace, FileSystemError, OutputChannel } from "vscode";
 import { FlashSectionMessage, PartitionInfo } from "./webserial";
-import { Transport, UsbJtagSerialReset } from "esptool-js";
-
-const USB_JTAG_SERIAL_PID = 0x1001;
+import { Transport, UsbJtagSerialReset, USB_JTAG_SERIAL_PID } from "esptool-js";
 
 export const errorNotificationMessage =
   "Build file not found. Make sure to build your ESP-IDF project first and if 'idf.buildPath' is defined, that is correctly set.";
@@ -47,7 +45,7 @@ export async function universalReset(transport: Transport) {
     await sleep(100);
     await transport.setDTR(true);
   } else { // WebUSB polyfill
-    new UsbJtagSerialReset(transport).reset();
+    await new UsbJtagSerialReset(transport).reset();
     if (transport.getPid() === USB_JTAG_SERIAL_PID) {
       await sleep(100);
     }
@@ -82,7 +80,7 @@ export async function handleMonitorError(outputChnl: OutputChannel, error: any) 
   outputChnl.appendLine(rawMessage);
 }
 
-export async function getBuildDirectoryFileContent(
+async function getBuildDirectoryFilePath(
   workspaceFolder: Uri,
   ...fileRelativeToBuildPath: string[]
 ) {
@@ -112,7 +110,28 @@ export async function getBuildDirectoryFileContent(
   if (projDescStat.type !== FileType.File) {
     throw new Error(`${resultFilePath} does not exists.`);
   }
-  const resultFileContent = await workspace.fs.readFile(resultFilePath);
+  return resultFilePath;
+}
+
+export async function getBuildDirectoryFileBuffer(
+  workspaceFolder: Uri,
+  ...fileRelativeToBuildPath: string[]
+) {
+  const resultFilePath = await getBuildDirectoryFilePath(
+    workspaceFolder,
+    ...fileRelativeToBuildPath
+  );
+  return workspace.fs.readFile(resultFilePath);
+}
+
+export async function getBuildDirectoryFileContent(
+  workspaceFolder: Uri,
+  ...fileRelativeToBuildPath: string[]
+) {
+  const resultFileContent = await getBuildDirectoryFileBuffer(
+    workspaceFolder,
+    ...fileRelativeToBuildPath
+  );
   return uInt8ArrayToString(resultFileContent);
 }
 
@@ -153,12 +172,12 @@ export async function readFileIntoBuffer(
   name: string,
   offset: string
 ) {
-  const fileBufferString = await getBuildDirectoryFileContent(
+  const fileBuffer = await getBuildDirectoryFileBuffer(
     workspaceFolder,
     name
   );
   const fileBufferResult: PartitionInfo = {
-    data: fileBufferString,
+    data: fileBuffer,
     name,
     address: parseInt(offset),
   };

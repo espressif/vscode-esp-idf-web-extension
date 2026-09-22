@@ -27,7 +27,10 @@ import {
 } from "vscode";
 import {
   ESPLoader,
+  FlashFreqValues,
+  FlashModeValues,
   FlashOptions,
+  FlashSizeValues,
   IEspLoaderTerminal,
   LoaderOptions,
   Transport,
@@ -40,7 +43,7 @@ export const OUTPUT_CHANNEL_NAME = "ESP-IDF Web";
 
 export interface PartitionInfo {
   name: string;
-  data: string;
+  data: Uint8Array;
   address: number;
 }
 
@@ -104,9 +107,9 @@ export async function flashTask(
   );
   const flashOptions: FlashOptions = {
     fileArray: flashSectionsMessage.sections,
-    flashSize: flashSectionsMessage.flashSize,
-    flashFreq: flashSectionsMessage.flashFreq,
-    flashMode: flashSectionsMessage.flashMode,
+    flashSize: flashSectionsMessage.flashSize as FlashSizeValues,
+    flashFreq: flashSectionsMessage.flashFreq as FlashFreqValues,
+    flashMode: flashSectionsMessage.flashMode as FlashModeValues,
     eraseAll: false,
     compress: true,
     reportProgress: (fileIndex: number, written: number, total: number) => {
@@ -117,9 +120,13 @@ export async function flashTask(
         `${flashSectionsMessage.sections[fileIndex].name} (${written}/${total})`
       );
     },
-    calculateMD5Hash: (image: string) =>
-      MD5(enc.Latin1.parse(image)).toString(),
-  } as FlashOptions;
+    calculateMD5Hash: (image: Uint8Array) => {
+      const latin1String = Array.from(image, (byte) =>
+        String.fromCharCode(byte)
+      ).join("");
+      return MD5(enc.Latin1.parse(latin1String)).toString();
+    },
+  };
 
   await chip;
   await esploader.writeFlash(flashOptions);

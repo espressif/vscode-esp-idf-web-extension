@@ -41,16 +41,10 @@ export class SerialTerminal implements Pseudoterminal {
     this.writeLine(`Opened with baud rate: ${this.transport.baudrate}`);
     await sleep(100); // for JTAG on android
     await universalReset(this.transport);
-    while (!this.closed) {
-      const readLoop = this.transport.rawRead();
-      const { value, done } = await readLoop.next();
-  
-      if (done || !value) {
-        break;
-      }
-      let valStr = uInt8ArrayToString(value);
-      this.writeOutput(valStr);
-    }
+    await this.transport.rawRead(
+      (value) => this.writeOutput(uInt8ArrayToString(value)),
+      () => this.closed
+    );
   }
 
   public async close() {
