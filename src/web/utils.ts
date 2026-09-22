@@ -40,23 +40,17 @@ export async function universalReset(transport: Transport) {
   if (!transport) {
     return;
   }
-  if ((navigator as any).serial !== undefined) { // WebSerial
-    await transport.setDTR(false);
-    await sleep(100);
-    await transport.setDTR(true);
-  } else { // WebUSB polyfill
+  if (transport.getPid() === USB_JTAG_SERIAL_PID) {
     await new UsbJtagSerialReset(transport).reset();
-    if (transport.getPid() === USB_JTAG_SERIAL_PID) {
-      await sleep(100);
-    }
     await sleep(100);
-    // can also use SerialReset twice, but then the chip gets reset 1.5 times
-    await transport.setRTS(false);
-    await transport.setDTR(false);
-    await sleep(100);
-    await transport.setDTR(true);
-    await transport.setRTS(false);
+    return;
   }
+  // Classic auto-reset circuit: DTR drives IO0 and RTS drives EN.
+  // IO0 must stay high so the chip runs the app instead of the ROM bootloader.
+  await transport.setDTR(false);
+  await transport.setRTS(true);
+  await sleep(100);
+  await transport.setRTS(false);
 }
 
 export async function handleMonitorError(outputChnl: OutputChannel, error: any) {
