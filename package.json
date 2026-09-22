@@ -101,6 +101,12 @@
             "default": true,
             "description": "Show IDF-WEB status bar icons",
             "scope": "application"
+          },
+          "idfWeb.useWebUsbCh340": {
+            "type": "boolean",
+            "default": false,
+            "description": "Select WCH CH340/CH341 adapters with WebUSB so flash can change baud in place. Leave off for CP2102, FTDI, ESP USB-JTAG, and CH343 (CDC).",
+            "scope": "window"
           }
         }
       }

@@ -84,6 +84,8 @@ Press menu **View**, select **Command Palette...** and search for these commands
 
 `idfWeb.enableStatusBarIcons`: Show or hide the ESP-IDF Web extension status bar icons: (Selected serial port, Flash and Monitor icons). This setting can only be modified in User Settings.
 
+`idfWeb.useWebUsbCh340`: Select WCH CH340/CH341 adapters with WebUSB so flash can change baud rate in place. Enable this when native Web Serial keeps the adapter at 115200. Leave it off for CP2102, FTDI, ESP USB-JTAG, and CH343 (use Web Serial for those).
+
 For `ESP-IDF-Web Monitor` command, the baud rate used is determined from build directory's `project_description.json` field called `monitor_baud`.
 
 ## Test the extension
