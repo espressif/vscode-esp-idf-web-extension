@@ -24,7 +24,8 @@ const webExtensionConfig = {
 		filename: '[name].js',
 		path: path.join(__dirname, './dist/web'),
 		libraryTarget: 'commonjs',
-		devtoolModuleFilenameTemplate: '../../[resource-path]'
+		devtoolModuleFilenameTemplate: '../../[resource-path]',
+		asyncChunks: false // dynamic import() must not emit chunks: the web extension host blocks importScripts
 	},
 	resolve: {
 		mainFields: ['browser', 'module', 'main'], // look for `browser` entry point in imported node modules

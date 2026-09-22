@@ -26,6 +26,9 @@ jobs:
       - name: Lint Check
         run: yarn lint
 
+      - name: Run test
+        run: yarn test
+
       - name: Package .vsix
         run: yarn package
 

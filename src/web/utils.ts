@@ -39,7 +39,7 @@ export function getOutputChannel(): OutputChannel {
 }
 
 export const errorNotificationMessage =
-  "Build file not found. Make sure to build your ESP-IDF project first and if 'idf.buildPath' is defined, that is correctly set.";
+  "Build file not found. Make sure to build your ESP-IDF project first and if 'idfWeb.buildPath' is defined, that is correctly set.";
 // https://issues.chromium.org/issues/40137537
 const webUsbPolyfillClaimError =
   "Failed to execute 'claimInterface' on 'USBDevice': Unable to claim interface.";
@@ -81,9 +81,13 @@ export async function handleMonitorError(error: any) {
   const outputChnl = getOutputChannel();
   outputChnl.show();
   outputChnl.appendLine("\n");
-  if (error instanceof FileSystemError && error.code === "FileNotFound") {
-    window.showErrorMessage(errorNotificationMessage);
-    outputChnl.appendLine(errorNotificationMessage);
+  if (isBuildPathUserError(error)) {
+    const message =
+      error instanceof Error && error.message
+        ? error.message
+        : errorNotificationMessage;
+    window.showErrorMessage(message);
+    outputChnl.appendLine(message);
     return;
   } else if (errorMessage === webUsbPolyfillClaimError) {
     if ((navigator as any).serial) {
@@ -100,35 +104,118 @@ export async function handleMonitorError(error: any) {
   outputChnl.appendLine(rawMessage);
 }
 
+function readConfiguredBuildPath(workspaceFolder: Uri) {
+  return workspace
+    .getConfiguration("", workspaceFolder)
+    .get<string>("idfWeb.buildPath");
+}
+
+function splitPathSegments(value: string) {
+  return value.split(/[/\\]+/).filter((segment) => segment.length > 0);
+}
+
+function isAbsolutePosixPath(value: string) {
+  return value.startsWith("/");
+}
+
+function buildDirectoryMissingMessage(buildDir: Uri) {
+  return `Build path does not exist: ${buildDir.toString()}. Build your ESP-IDF project first or set 'idfWeb.buildPath' to the build directory.`;
+}
+
+function buildFileMissingMessage(fileUri: Uri) {
+  return `Build file not found: ${fileUri.toString()}. Make sure to build your ESP-IDF project first and if 'idfWeb.buildPath' is defined, that is correctly set.`;
+}
+
+function isBuildPathUserError(error: unknown) {
+  if (error instanceof FileSystemError && error.code === "FileNotFound") {
+    return true;
+  }
+  if (error instanceof Error) {
+    return (
+      error.message.includes("Build path does not exist") ||
+      error.message.includes("Build file not found") ||
+      error.message.includes("does not exists") ||
+      error.message.includes("is not a directory")
+    );
+  }
+  return false;
+}
+
+export function resolveBuildDirectoryUri(
+  workspaceFolder: Uri,
+  configuredPath?: string | null,
+) {
+  const trimmed = configuredPath?.trim() ?? "";
+  if (!trimmed) {
+    return Uri.joinPath(workspaceFolder, "build");
+  }
+
+  const hasWorkspaceFolderVar = /\$\{workspaceFolder\}/i.test(trimmed);
+  let normalized = hasWorkspaceFolderVar
+    ? trimmed
+        .replace(/\$\{workspaceFolder\}/gi, "")
+        .replace(/^[/\\]+/, "")
+    : trimmed;
+  normalized = normalized.replace(/\\/g, "/").replace(/\/+$/, "");
+
+  if (!normalized) {
+    return workspaceFolder;
+  }
+  if (!hasWorkspaceFolderVar && isAbsolutePosixPath(normalized)) {
+    return workspaceFolder.with({ path: normalized });
+  }
+  const segments = splitPathSegments(normalized);
+  if (segments.length === 0) {
+    return Uri.joinPath(workspaceFolder, "build");
+  }
+  return Uri.joinPath(workspaceFolder, ...segments);
+}
+
+function logUsingBuildPath(buildDir: Uri) {
+  getOutputChannel().appendLine(`Using build path: ${buildDir.toString()}`);
+}
+
+async function getBuildDirectoryUri(workspaceFolder: Uri) {
+  return resolveBuildDirectoryUri(
+    workspaceFolder,
+    readConfiguredBuildPath(workspaceFolder),
+  );
+}
+
+async function ensureBuildDirectoryExists(workspaceFolder: Uri) {
+  const buildDir = await getBuildDirectoryUri(workspaceFolder);
+  try {
+    const buildPathStat = await workspace.fs.stat(buildDir);
+    if (buildPathStat.type !== FileType.Directory) {
+      throw new Error(buildDirectoryMissingMessage(buildDir));
+    }
+  } catch (error) {
+    if (error instanceof FileSystemError && error.code === "FileNotFound") {
+      throw new Error(buildDirectoryMissingMessage(buildDir));
+    }
+    throw error;
+  }
+  return buildDir;
+}
+
 async function getBuildDirectoryFilePath(
   workspaceFolder: Uri,
   ...fileRelativeToBuildPath: string[]
 ) {
-  let resultFilePath: Uri;
-  let buildPath = workspace
-    .getConfiguration("", workspaceFolder)
-    .get("idf.buildPath") as string;
-  if (buildPath) {
-    buildPath = resolveVariables(buildPath, workspaceFolder);
-    const buildPathUri = Uri.parse(buildPath).with({
-      scheme: workspaceFolder.scheme,
-      authority: workspaceFolder.authority,
-    });
-    const buildPathStat = await workspace.fs.stat(buildPathUri);
-    if (buildPathStat.type !== FileType.Directory) {
-      throw new Error(`${buildPath} is not a directory or does not exists.`);
+  const buildDir = await ensureBuildDirectoryExists(workspaceFolder);
+  const segments = fileRelativeToBuildPath.flatMap(splitPathSegments);
+  const resultFilePath =
+    segments.length > 0 ? Uri.joinPath(buildDir, ...segments) : buildDir;
+  try {
+    const projDescStat = await workspace.fs.stat(resultFilePath);
+    if (projDescStat.type !== FileType.File) {
+      throw new Error(buildFileMissingMessage(resultFilePath));
     }
-    resultFilePath = Uri.joinPath(buildPathUri, ...fileRelativeToBuildPath);
-  } else {
-    resultFilePath = Uri.joinPath(
-      workspaceFolder,
-      "build",
-      ...fileRelativeToBuildPath,
-    );
-  }
-  const projDescStat = await workspace.fs.stat(resultFilePath);
-  if (projDescStat.type !== FileType.File) {
-    throw new Error(`${resultFilePath} does not exists.`);
+  } catch (error) {
+    if (error instanceof FileSystemError && error.code === "FileNotFound") {
+      throw new Error(buildFileMissingMessage(resultFilePath));
+    }
+    throw error;
   }
   return resultFilePath;
 }
@@ -165,16 +252,7 @@ function getConfiguredMonitorBaudRate() {
 }
 
 function isMissingBuildFileError(error: unknown) {
-  if (error instanceof FileSystemError && error.code === "FileNotFound") {
-    return true;
-  }
-  if (error instanceof Error) {
-    return (
-      error.message.includes("does not exists") ||
-      error.message.includes("is not a directory")
-    );
-  }
-  return false;
+  return isBuildPathUserError(error);
 }
 
 function logMonitorBaudFallback(reason: string) {
@@ -186,6 +264,8 @@ function logMonitorBaudFallback(reason: string) {
 
 export async function getMonitorBaudRate(workspaceFolder?: Uri) {
   if (workspaceFolder) {
+    const buildDir = await getBuildDirectoryUri(workspaceFolder);
+    logUsingBuildPath(buildDir);
     try {
       const projDescContentStr = await getBuildDirectoryFileContent(
         workspaceFolder,
@@ -201,6 +281,12 @@ export async function getMonitorBaudRate(workspaceFolder?: Uri) {
       if (!isMissingBuildFileError(error)) {
         throw error;
       }
+      logMonitorBaudFallback(
+        error instanceof Error
+          ? error.message
+          : "project_description.json not found.",
+      );
+      return getConfiguredMonitorBaudRate();
     }
     logMonitorBaudFallback("project_description.json not found.");
   } else {
@@ -212,6 +298,8 @@ export async function getMonitorBaudRate(workspaceFolder?: Uri) {
 export async function getFlashSectionsForCurrentWorkspace(
   workspaceFolder: Uri,
 ) {
+  const buildDir = await getBuildDirectoryUri(workspaceFolder);
+  logUsingBuildPath(buildDir);
   const flasherArgsContentStr = await getBuildDirectoryFileContent(
     workspaceFolder,
     "flasher_args.json",
@@ -244,16 +332,6 @@ export async function readFileIntoBuffer(
     address: parseInt(offset),
   };
   return fileBufferResult;
-}
-
-export function resolveVariables(configPath: string, scope: Uri) {
-  const regexp = /\$\{(.*?)\}/g; // Find ${anything}
-  return configPath.replace(regexp, (match: string) => {
-    if (scope && match.indexOf("workspaceFolder") > 0) {
-      return scope.fsPath === "/" || scope.fsPath === "\\" ? "" : scope.fsPath;
-    }
-    return match;
-  });
 }
 
 export function createStatusBarItem(

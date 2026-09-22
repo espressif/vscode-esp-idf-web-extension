@@ -1,15 +1,49 @@
-import * as assert from 'assert';
+import * as assert from "assert";
+import * as vscode from "vscode";
+import { resolveBuildDirectoryUri } from "../../utils";
 
-// You can import and use all API from the 'vscode' module
-// as well as import your extension to test it
-import * as vscode from 'vscode';
-// import * as myExtension from '../../extension';
+suite("Web Extension Test Suite", () => {
+  const workspaceFolder = vscode.Uri.parse(
+    "vscode-remote://codespaces+test/workspaces/uart_echo",
+  );
 
-suite('Web Extension Test Suite', () => {
-	vscode.window.showInformationMessage('Start all tests.');
+  test("empty and undefined idfWeb.buildPath use workspaceFolder/build", () => {
+    const expected = vscode.Uri.joinPath(workspaceFolder, "build").toString();
+    assert.strictEqual(
+      resolveBuildDirectoryUri(workspaceFolder, undefined).toString(),
+      expected,
+    );
+    assert.strictEqual(
+      resolveBuildDirectoryUri(workspaceFolder, "").toString(),
+      expected,
+    );
+    assert.strictEqual(
+      resolveBuildDirectoryUri(workspaceFolder, "   ").toString(),
+      expected,
+    );
+  });
 
-	test('Sample test', () => {
-		assert.strictEqual(-1, [1, 2, 3].indexOf(5));
-		assert.strictEqual(-1, [1, 2, 3].indexOf(0));
-	});
+  test("relative idfWeb.buildPath is joined with the workspace folder", () => {
+    assert.strictEqual(
+      resolveBuildDirectoryUri(workspaceFolder, "build_prod").toString(),
+      vscode.Uri.joinPath(workspaceFolder, "build_prod").toString(),
+    );
+  });
+
+  test("${workspaceFolder}/build resolves relative to the workspace folder", () => {
+    assert.strictEqual(
+      resolveBuildDirectoryUri(
+        workspaceFolder,
+        "${workspaceFolder}/build",
+      ).toString(),
+      vscode.Uri.joinPath(workspaceFolder, "build").toString(),
+    );
+  });
+
+  test("absolute POSIX idfWeb.buildPath keeps scheme and authority", () => {
+    const resolved = resolveBuildDirectoryUri(workspaceFolder, "/custom/out");
+    assert.strictEqual(resolved.scheme, workspaceFolder.scheme);
+    assert.strictEqual(resolved.authority, workspaceFolder.authority);
+    assert.strictEqual(resolved.path, "/custom/out");
+  });
 });

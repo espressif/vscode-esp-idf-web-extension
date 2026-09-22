@@ -76,11 +76,13 @@ Press menu **View**, select **Command Palette...** and search for these commands
 
 `ESP-IDF-Web Disconnect serial port`: Dispose of currently selected serial port. This command is executed when you click the serial port shown in the status bar.
 
-> **NOTE:** The `ESP-IDF-Web Flash` command depends on `flasher_args.json` from the ESP-IDF project build directory. The `ESP-IDF-Web Monitor` command uses `monitor_baud` from `project_description.json` when that file exists in the build directory. If no workspace folder is open or `project_description.json` is missing, monitor continues using `idfWeb.monitorBaudRate`. The build directory is defined using `idf.buildPath` from [ESP-IDF extension VS Code](https://marketplace.visualstudio.com/items?itemName=espressif.esp-idf-extension) configuration setting or it will use the currently selected workspace folder `build` otherwise (`${workspaceFolder}/build`).
+> **NOTE:** The `ESP-IDF-Web Flash` command depends on `flasher_args.json` from the ESP-IDF project build directory. The `ESP-IDF-Web Monitor` command uses `monitor_baud` from `project_description.json` when that file exists in the build directory. If no workspace folder is open or `project_description.json` is missing, monitor continues using `idfWeb.monitorBaudRate`. The build directory is `${workspaceFolder}/build` unless you set `idfWeb.buildPath`. Relative values are joined with the workspace folder. The resolved path is printed in the **ESP-IDF Web** output channel.
 
 ## Settings
 
 `idfWeb.flashBaudRate`: Allow the user to set the flash baudrate being used to flash the current workspace folder ESP-IDF project application to your device.
+
+`idfWeb.buildPath`: Build directory for flash and monitor artifacts (`flasher_args.json`, `project_description.json`, binary files). Empty (default) uses `${workspaceFolder}/build`. Relative values are joined with the workspace folder.
 
 `idfWeb.monitorBaudRate`: Baud rate for `ESP-IDF-Web Monitor` when no workspace folder is open or `project_description.json` is missing. Default is `115200` (`74880` or `115200`).
 

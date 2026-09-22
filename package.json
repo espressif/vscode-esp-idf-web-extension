@@ -85,6 +85,12 @@
       {
         "title": "ESP-IDF Web",
         "properties": {
+          "idfWeb.buildPath": {
+            "type": "string",
+            "default": "",
+            "description": "Build directory for flash and monitor artifacts (flasher_args.json, project_description.json, binary files). Empty uses ${workspaceFolder}/build. Relative values are joined with the workspace folder.",
+            "scope": "resource"
+          },
           "idfWeb.flashBaudRate": {
             "type": "number",
             "default": 921600,

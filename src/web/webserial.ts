@@ -60,82 +60,89 @@ export async function flashTask(
 ) {
   const outputChannel = getOutputChannel();
   isFlashing = true;
-  const transport = new Transport(port);
-  const clean = () => {
-    outputChannel.clear();
-  };
-  const writeLine = (data: string) => {
-    outputChannel.appendLine(data);
-  };
-  const write = (data: string) => {
-    outputChannel.append(data);
-  };
-
-  const loaderTerminal: IEspLoaderTerminal = {
-    clean,
-    write,
-    writeLine,
-  };
-  let flashBaudRate = await workspace
-    .getConfiguration("", workspaceFolder)
-    .get("idfWeb.flashBaudRate");
-  if (!flashBaudRate) {
-    flashBaudRate = 921600;
-    outputChannel.appendLine(
-      `idfWeb.flashBaudRate not defined. Using default value ${flashBaudRate}`
+  let transport: Transport | undefined;
+  try {
+    const flashSectionsMessage = await getFlashSectionsForCurrentWorkspace(
+      workspaceFolder
     );
-  }
-  const loaderOptions = {
-    transport,
-    baudrate: flashBaudRate,
-    terminal: loaderTerminal,
-  } as LoaderOptions;
-  progress.report({
-    message: `ESP-IDF Web Flashing using baud rate ${flashBaudRate}`,
-  });
-  outputChannel.appendLine(
-    `ESP-IDF Web Flashing with Webserial using baud rate ${flashBaudRate}`
-  );
-  outputChannel.show();
-  const esploader = new ESPLoader(loaderOptions);
-  const chip = esploader.main();
-  const flashSectionsMessage = await getFlashSectionsForCurrentWorkspace(
-    workspaceFolder
-  );
-  const flashOptions: FlashOptions = {
-    fileArray: flashSectionsMessage.sections,
-    flashSize: flashSectionsMessage.flashSize as FlashSizeValues,
-    flashFreq: flashSectionsMessage.flashFreq as FlashFreqValues,
-    flashMode: flashSectionsMessage.flashMode as FlashModeValues,
-    eraseAll: false,
-    compress: true,
-    reportProgress: (fileIndex: number, written: number, total: number) => {
-      progress.report({
-        message: `${flashSectionsMessage.sections[fileIndex].name} (${written}/${total})`,
-      });
-      outputChannel.appendLine(
-        `${flashSectionsMessage.sections[fileIndex].name} (${written}/${total})`
-      );
-    },
-    calculateMD5Hash: (image: Uint8Array) => {
-      const latin1String = Array.from(image, (byte) =>
-        String.fromCharCode(byte)
-      ).join("");
-      return MD5(enc.Latin1.parse(latin1String)).toString();
-    },
-  };
+    transport = new Transport(port);
+    const clean = () => {
+      outputChannel.clear();
+    };
+    const writeLine = (data: string) => {
+      outputChannel.appendLine(data);
+    };
+    const write = (data: string) => {
+      outputChannel.append(data);
+    };
 
-  await chip;
-  await esploader.writeFlash(flashOptions);
-  progress.report({ message: `ESP-IDF Web Flashing done` });
-  window.showInformationMessage(`ESP-IDF Web Flashing done.`);
-  outputChannel.appendLine(`ESP-IDF Web Flashing done`);
-  await universalReset(transport);
-  if (transport) {
-    await transport.disconnect();
+    const loaderTerminal: IEspLoaderTerminal = {
+      clean,
+      write,
+      writeLine,
+    };
+    let flashBaudRate = await workspace
+      .getConfiguration("", workspaceFolder)
+      .get("idfWeb.flashBaudRate");
+    if (!flashBaudRate) {
+      flashBaudRate = 921600;
+      outputChannel.appendLine(
+        `idfWeb.flashBaudRate not defined. Using default value ${flashBaudRate}`
+      );
+    }
+    const loaderOptions = {
+      transport,
+      baudrate: flashBaudRate,
+      terminal: loaderTerminal,
+    } as LoaderOptions;
+    progress.report({
+      message: `ESP-IDF Web Flashing using baud rate ${flashBaudRate}`,
+    });
+    outputChannel.appendLine(
+      `ESP-IDF Web Flashing with Webserial using baud rate ${flashBaudRate}`
+    );
+    outputChannel.show();
+    const esploader = new ESPLoader(loaderOptions);
+    const flashOptions: FlashOptions = {
+      fileArray: flashSectionsMessage.sections,
+      flashSize: flashSectionsMessage.flashSize as FlashSizeValues,
+      flashFreq: flashSectionsMessage.flashFreq as FlashFreqValues,
+      flashMode: flashSectionsMessage.flashMode as FlashModeValues,
+      eraseAll: false,
+      compress: true,
+      reportProgress: (fileIndex: number, written: number, total: number) => {
+        progress.report({
+          message: `${flashSectionsMessage.sections[fileIndex].name} (${written}/${total})`,
+        });
+        outputChannel.appendLine(
+          `${flashSectionsMessage.sections[fileIndex].name} (${written}/${total})`
+        );
+      },
+      calculateMD5Hash: (image: Uint8Array) => {
+        const latin1String = Array.from(image, (byte) =>
+          String.fromCharCode(byte)
+        ).join("");
+        return MD5(enc.Latin1.parse(latin1String)).toString();
+      },
+    };
+
+    await esploader.main();
+    await esploader.writeFlash(flashOptions);
+    progress.report({ message: `ESP-IDF Web Flashing done` });
+    window.showInformationMessage(`ESP-IDF Web Flashing done.`);
+    outputChannel.appendLine(`ESP-IDF Web Flashing done`);
+    await universalReset(transport);
+    return transport;
+  } finally {
+    isFlashing = false;
+    if (transport) {
+      try {
+        await transport.disconnect();
+      } catch {
+        // The serial port may already be closed after a failed connect.
+      }
+    }
   }
-  isFlashing = false;
-  return transport;
 }
 
 export async function flashWithWebSerial(
