@@ -87,6 +87,7 @@ export async function getSerialPort(disconnectCallback?: () => void) {
     )) as SerialPortInfo;
     if (!portInfo) {
       window.showInformationMessage("No port selected");
+      return;
     }
     const ports = await navigator.serial.getPorts();
     serialport = ports.find((item) => {
@@ -100,6 +101,10 @@ export async function getSerialPort(disconnectCallback?: () => void) {
       serialport.addEventListener("disconnect", () => {
         disconnectCallback?.();
       });
+    } else {
+      window.showErrorMessage(
+        "Selected serial port was not found among the granted ports."
+      );
     }
   }
   else if ((navigator as any).usb) {
@@ -133,8 +138,8 @@ export async function getSerialPort(disconnectCallback?: () => void) {
 }
 
 export class IDFWebSerialPort {
-  private static instance: SerialPort | undefined;
-  public static statusBarItem: StatusBarItem | undefined;
+  private static instance: SerialPort | undefined = undefined;
+  public static statusBarItem: StatusBarItem | undefined = undefined;
 
   static async disposePort() {
     window.showInformationMessage("Disposing port");

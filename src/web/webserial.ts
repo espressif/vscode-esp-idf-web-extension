@@ -18,7 +18,6 @@
 
 import {
   CancellationToken,
-  OutputChannel,
   Progress,
   ProgressLocation,
   Uri,
@@ -36,10 +35,8 @@ import {
   Transport,
 } from "esptool-js";
 import { enc, MD5 } from "crypto-js";
-import { getFlashSectionsForCurrentWorkspace, handleMonitorError, universalReset } from "./utils";
+import { getFlashSectionsForCurrentWorkspace, handleMonitorError, getOutputChannel, universalReset } from "./utils";
 import { IDFWebMonitorTerminal } from "./monitorTerminalManager";
-
-export const OUTPUT_CHANNEL_NAME = "ESP-IDF Web";
 
 export interface PartitionInfo {
   name: string;
@@ -59,9 +56,9 @@ export let isFlashing: boolean = false;
 export async function flashTask(
   workspaceFolder: Uri,
   port: SerialPort,
-  progress: Progress<{ message: string }>,
-  outputChannel: OutputChannel
+  progress: Progress<{ message: string }>
 ) {
+  const outputChannel = getOutputChannel();
   isFlashing = true;
   const transport = new Transport(port);
   const clean = () => {
@@ -157,12 +154,11 @@ export async function flashWithWebSerial(
       }>,
       cancelToken: CancellationToken
     ) => {
-      const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
       try {
-        await flashTask(workspaceFolder, port, progress, outputChnl);
+        await flashTask(workspaceFolder, port, progress);
       } catch (error: any) {
         isFlashing = false;
-        handleMonitorError(outputChnl, error);
+        handleMonitorError(error);
       }
     }
   );
@@ -181,19 +177,17 @@ export async function flashAndMonitor(workspaceFolder: Uri, port: SerialPort) {
       }>,
       cancelToken: CancellationToken
     ) => {
-      const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
       try {
         const transport = await flashTask(
           workspaceFolder,
           port,
-          progress,
-          outputChnl
+          progress
         );
         await transport.waitForUnlock(500);
         await IDFWebMonitorTerminal.init(workspaceFolder, transport);
       } catch (error: any) {
         isFlashing = false;
-        handleMonitorError(outputChnl, error);
+        handleMonitorError(error);
         IDFWebMonitorTerminal.dispose();
       }
     }

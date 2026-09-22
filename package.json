@@ -52,6 +52,7 @@
     "soc"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "workspaceContains:**/project_description.json",
     "workspaceContains:**/sdkconfig",
     "workspaceContains:**/CMakeLists.txt"
@@ -94,6 +95,16 @@
               921600
             ],
             "description": "Baud rate for flash command",
+            "scope": "window"
+          },
+          "idfWeb.monitorBaudRate": {
+            "type": "number",
+            "default": 115200,
+            "enum": [
+              74880,
+              115200
+            ],
+            "description": "Baud rate for monitor when no workspace folder or project_description.json is available",
             "scope": "window"
           },
           "idfWeb.enableStatusBarIcons": {
