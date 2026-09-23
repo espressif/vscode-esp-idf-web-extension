@@ -201,7 +201,74 @@ export async function flashAndMonitor(workspaceFolder: Uri, port: SerialPort) {
   );
 }
 
-export async function eraseFlash(workspaceFolder: Uri, port: SerialPort) {
+export async function eraseFlashTask(
+  port: SerialPort,
+  progress: Progress<{ message: string }>,
+  workspaceFolder?: Uri,
+) {
+  const outputChannel = getOutputChannel();
+  isFlashing = true;
+  let transport: Transport | undefined;
+  try {
+    transport = new Transport(port);
+    const clean = () => {
+      outputChannel.clear();
+    };
+    const writeLine = (data: string) => {
+      outputChannel.appendLine(data);
+    };
+    const write = (data: string) => {
+      outputChannel.append(data);
+    };
+    const loaderTerminal: IEspLoaderTerminal = {
+      clean,
+      write,
+      writeLine,
+    };
+    let flashBaudRate = await workspace
+      .getConfiguration("", workspaceFolder)
+      .get("idfWeb.flashBaudRate");
+    if (!flashBaudRate) {
+      flashBaudRate = 921600;
+      outputChannel.appendLine(
+        `idfWeb.flashBaudRate not defined. Using default value ${flashBaudRate}`,
+      );
+    }
+    const loaderOptions = {
+      transport,
+      baudrate: flashBaudRate,
+      terminal: loaderTerminal,
+    } as LoaderOptions;
+    progress.report({
+      message: `Using baud rate ${flashBaudRate}`,
+    });
+    outputChannel.appendLine(
+      `ESP-IDF Web Erasing flash with Webserial using baud rate ${flashBaudRate}`,
+    );
+    outputChannel.show();
+    const esploader = new ESPLoader(loaderOptions);
+    const chip = await esploader.main();
+
+    await esploader.eraseFlash();
+    transport.drainInput();
+    progress.report({
+      message: `ESP-IDF Web Erase flash done`,
+    });
+    outputChannel.appendLine(`ESP-IDF Web Erase flash done`);
+    window.showInformationMessage(`ESP-IDF Web Erase flash done.`);
+  } finally {
+    isFlashing = false;
+    if (transport) {
+      try {
+        await transport.disconnect();
+      } catch {
+        // The serial port may already be closed after a failed connect.
+      }
+    }
+  }
+}
+
+export async function eraseFlash(port: SerialPort, workspaceFolder?: Uri) {
   return await window.withProgress(
     {
       cancellable: false,
@@ -214,54 +281,10 @@ export async function eraseFlash(workspaceFolder: Uri, port: SerialPort) {
       }>,
       cancelToken: CancellationToken,
     ) => {
-      const outputChannel = getOutputChannel();
       try {
-        const transport = new Transport(port);
-        const clean = () => {
-          outputChannel.clear();
-        };
-        const writeLine = (data: string) => {
-          outputChannel.appendLine(data);
-        };
-        const write = (data: string) => {
-          outputChannel.append(data);
-        };
-        const loaderTerminal: IEspLoaderTerminal = {
-          clean,
-          write,
-          writeLine,
-        };
-        let flashBaudRate = await workspace
-          .getConfiguration("", workspaceFolder)
-          .get("idfWeb.flashBaudRate");
-        if (!flashBaudRate) {
-          flashBaudRate = 921600;
-          outputChannel.appendLine(
-            `idfWeb.flashBaudRate not defined. Using default value ${flashBaudRate}`,
-          );
-        }
-        const loaderOptions = {
-          transport,
-          baudrate: flashBaudRate,
-          terminal: loaderTerminal,
-        } as LoaderOptions;
-        progress.report({
-          message: `Using baud rate ${flashBaudRate}`,
-        });
-        outputChannel.appendLine(
-          `ESP-IDF Web Erasing flash with Webserial using baud rate ${flashBaudRate}`,
-        );
-        outputChannel.show();
-        const esploader = new ESPLoader(loaderOptions);
-        const chip = await esploader.main();
-
-        await esploader.eraseFlash();
-        transport.drainInput();
-        progress.report({
-          message: `Erase flash finished`,
-        });
-        outputChannel.appendLine(`ESP-IDF Web Erase flash finished`);
+        await eraseFlashTask(port, progress, workspaceFolder);
       } catch (error) {
+        isFlashing = false;
         handleMonitorError(error);
         IDFWebMonitorTerminal.dispose();
       }
