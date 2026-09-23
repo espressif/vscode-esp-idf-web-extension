@@ -6,6 +6,7 @@ const path = require("path");
 
 const MOCHA_JSON_MARKER = "__MOCHA_JSON_REPORT__";
 const REPORT_PATH = path.join("out", "results", "test-results.json");
+const TEST_SUITES_PATH = path.join("src", "web", "test", "suite");
 
 function extractReport(buffer) {
   const markerIndex = buffer.lastIndexOf(MOCHA_JSON_MARKER);
@@ -18,6 +19,28 @@ function extractReport(buffer) {
     return undefined;
   }
   return JSON.parse(line);
+}
+
+function getFallbackTestFile(repoRoot) {
+  const testSuiteDirectory = path.join(repoRoot, TEST_SUITES_PATH);
+  const testFiles = fs
+    .readdirSync(testSuiteDirectory, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".test.ts"))
+    .map((entry) => path.join(TEST_SUITES_PATH, entry.name));
+
+  return testFiles.length === 1 ? testFiles[0].split(path.sep).join("/") : "";
+}
+
+function normalizeReport(results, repoRoot) {
+  const fallbackFile = getFallbackTestFile(repoRoot);
+  for (const key of ["tests", "passes", "failures", "pending"]) {
+    for (const testCase of results[key] ?? []) {
+      if (testCase && typeof testCase.file !== "string") {
+        testCase.file = fallbackFile;
+      }
+    }
+  }
+  return results;
 }
 
 const repoRoot = path.join(__dirname, "..");
@@ -64,6 +87,7 @@ child.on("close", (code, signal) => {
   try {
     const results = extractReport(stdout + stderr);
     if (results) {
+      normalizeReport(results, repoRoot);
       const reportFile = path.join(repoRoot, REPORT_PATH);
       fs.mkdirSync(path.dirname(reportFile), { recursive: true });
       fs.writeFileSync(reportFile, JSON.stringify(results, null, 2) + "\n");
