@@ -30,8 +30,8 @@ jobs:
       - name: Lint Check
         run: yarn lint
 
-      - name: Run test
-        run: yarn test
+      - name: Run test with xvfb-run
+        run: xvfb-run --auto-servernum yarn test
 
       - name: Publish Test Report
         uses: dorny/test-reporter@v2
