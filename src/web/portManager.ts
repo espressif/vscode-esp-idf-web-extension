@@ -16,10 +16,70 @@
  * limitations under the License.
  */
 
+import { WebUSBSerialPort } from "esptool-js";
 import { commands, StatusBarItem, window, workspace } from "vscode";
 import { createStatusBarItem } from "./utils";
 
+const WCH_VID = 0x1a86;
+const CH343_PID = 0x55d3;
+
+function isBaudRateConfigurablePort(
+  port: SerialPort
+): port is SerialPort & { setBaudRate: (baudRate: number) => Promise<void> } {
+  return typeof (port as { setBaudRate?: unknown }).setBaudRate === "function";
+}
+
+async function getCh340WebUsbPort(
+  disconnectCallback?: () => void
+): Promise<SerialPort | undefined> {
+  if (!(navigator as any).usb) {
+    window.showErrorMessage(
+      "WebUSB is not available. Disable idfWeb.useWebUsbCh340 or use a browser with WebUSB."
+    );
+    return;
+  }
+
+  const device = (await commands.executeCommand(
+    "workbench.experimental.requestUsbDevice",
+    { filters: [{ vendorId: WCH_VID }] }
+  )) as USBDevice | undefined;
+  if (!device) {
+    window.showInformationMessage("No device selected");
+    return;
+  }
+  if (device.productId === CH343_PID) {
+    window.showErrorMessage(
+      "CH343 is a CDC device. Disable idfWeb.useWebUsbCh340 and select it with Web Serial."
+    );
+    return;
+  }
+
+  const ports = await (navigator as any).usb.getDevices();
+  const usbDevice = ports.find(
+    (item: USBDevice) =>
+      item.vendorId === device.vendorId && item.productId === device.productId
+  ) as USBDevice | undefined;
+  if (!usbDevice) {
+    window.showErrorMessage(
+      "Selected CH340 USB device was not found among granted devices."
+    );
+    return;
+  }
+
+  (navigator as any).usb.addEventListener("disconnect", () => {
+    disconnectCallback?.();
+  });
+  return new WebUSBSerialPort(usbDevice).asSerialPort() as unknown as SerialPort;
+}
+
 export async function getSerialPort(disconnectCallback?: () => void) {
+  const useWebUsbCh340 = workspace
+    .getConfiguration("")
+    .get("idfWeb.useWebUsbCh340") as boolean;
+  if (useWebUsbCh340) {
+    return getCh340WebUsbPort(disconnectCallback);
+  }
+
   let serialport: SerialPort | undefined;
   if ((navigator as any).serial) {
     const portInfo = (await commands.executeCommand(
@@ -41,6 +101,10 @@ export async function getSerialPort(disconnectCallback?: () => void) {
       serialport.addEventListener("disconnect", () => {
         disconnectCallback?.();
       });
+    } else {
+      window.showErrorMessage(
+        "Selected serial port was not found among the granted ports."
+      );
     }
   }
   else if ((navigator as any).usb) {
@@ -74,8 +138,8 @@ export async function getSerialPort(disconnectCallback?: () => void) {
 }
 
 export class IDFWebSerialPort {
-  private static instance: SerialPort | undefined;
-  public static statusBarItem: StatusBarItem | undefined;
+  private static instance: SerialPort | undefined = undefined;
+  public static statusBarItem: StatusBarItem | undefined = undefined;
 
   static async disposePort() {
     window.showInformationMessage("Disposing port");
@@ -111,7 +175,10 @@ export class IDFWebSerialPort {
 
   static createStatusBarItem(instance: SerialPort) {
     const info = instance.getInfo();
-    const name = `IDF-WEB USB Port VID:${
+    const kind = isBaudRateConfigurablePort(instance)
+      ? "CH340 WebUSB"
+      : "USB";
+    const name = `IDF-WEB ${kind} Port VID:${
       info.usbVendorId || "Unknown Vendor"
     } - PID:${info.usbProductId || "Unknown Product"}`;
     this.statusBarItem = createStatusBarItem(

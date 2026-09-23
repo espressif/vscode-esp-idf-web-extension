@@ -20,19 +20,18 @@ import { Transport } from "esptool-js";
 import { Terminal, Uri, window } from "vscode";
 import { getMonitorBaudRate, handleMonitorError } from "./utils";
 import { SerialTerminal } from "./serialPseudoTerminal";
-import { OUTPUT_CHANNEL_NAME } from "./webserial";
 
 export const TERMINAL_NAME = "ESP-IDF Web Monitor";
 
 export class IDFWebMonitorTerminal {
-  private static instance: Terminal | undefined;
-  private static serialTerminal: SerialTerminal | undefined;
+  private static instance: Terminal | undefined = undefined;
+  private static serialTerminal: SerialTerminal | undefined = undefined;
 
-  static async init(workspaceFolder: Uri, transport: Transport) {
+  static async init(workspaceFolder: Uri | undefined, transport: Transport) {
     if (!this.instance) {
       this.instance = await this.createMonitorTerminal(
         workspaceFolder,
-        transport
+        transport,
       );
     }
     return this.instance;
@@ -49,8 +48,8 @@ export class IDFWebMonitorTerminal {
   }
 
   static async createMonitorTerminal(
-    workspaceFolder: Uri,
-    transport: Transport
+    workspaceFolder: Uri | undefined,
+    transport: Transport,
   ) {
     const monitorBaudRate = await getMonitorBaudRate(workspaceFolder);
     if (!monitorBaudRate) {
@@ -59,10 +58,8 @@ export class IDFWebMonitorTerminal {
 
     try {
       await transport.connect(monitorBaudRate, { baudRate: monitorBaudRate });
-    }
-    catch (error) {
-      const outputChnl = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
-      handleMonitorError(outputChnl, error);
+    } catch (error) {
+      handleMonitorError(error);
       IDFWebMonitorTerminal.dispose();
       return;
     }

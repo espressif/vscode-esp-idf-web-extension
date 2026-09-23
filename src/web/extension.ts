@@ -17,20 +17,16 @@
  */
 
 import * as vscode from "vscode";
-import {
-  flashAndMonitor,
-  flashWithWebSerial,
-  isFlashing,
-} from "./webserial";
+import { flashAndMonitor, flashWithWebSerial, isFlashing } from "./webserial";
 import { IDFWebSerialPort } from "./portManager";
-import { createStatusBarItem } from "./utils";
+import { createStatusBarItem, getOutputChannel } from "./utils";
 import { IDFWebMonitorTerminal } from "./monitorTerminalManager";
 import { monitorWithWebserial } from "./monitor";
 
 const statusBarItems: { [key: string]: vscode.StatusBarItem } = {};
 
 export function activate(context: vscode.ExtensionContext) {
-  if ((navigator as any).serial === undefined && (navigator as any).usb) { 
+  if ((navigator as any).serial === undefined && (navigator as any).usb) {
     console.log("WebSerial not supported. Polyfilling with WebUSB");
   }
   const flashDisposable = vscode.commands.registerCommand(
@@ -47,7 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (workspaceFolder && port) {
         await flashWithWebSerial(workspaceFolder.uri, port);
       }
-    }
+    },
   );
 
   context.subscriptions.push(flashDisposable);
@@ -58,15 +54,21 @@ export function activate(context: vscode.ExtensionContext) {
       if (IDFWebMonitorTerminal.exists()) {
         await IDFWebMonitorTerminal.dispose();
       }
-      let workspaceFolder = await getWorkspaceFolder();
-      if (!workspaceFolder) {
-        return;
+      let workspaceFolder;
+      if (
+        vscode.workspace.workspaceFolders &&
+        vscode.workspace.workspaceFolders.length > 0
+      ) {
+        workspaceFolder = await getWorkspaceFolder();
+        if (!workspaceFolder) {
+          return;
+        }
       }
       const port = await IDFWebSerialPort.init();
-      if (workspaceFolder && port) {
-        await monitorWithWebserial(workspaceFolder.uri, port);
+      if (port) {
+        await monitorWithWebserial(workspaceFolder?.uri, port);
       }
-    }
+    },
   );
   context.subscriptions.push(monitorDisposable);
 
@@ -84,7 +86,7 @@ export function activate(context: vscode.ExtensionContext) {
       if (workspaceFolder && port) {
         await flashAndMonitor(workspaceFolder.uri, port);
       }
-    }
+    },
   );
   context.subscriptions.push(flashMonitorDisposable);
 
@@ -92,7 +94,7 @@ export function activate(context: vscode.ExtensionContext) {
     "espIdfWeb.selectPort",
     async () => {
       await IDFWebSerialPort.init();
-    }
+    },
   );
   context.subscriptions.push(selectPort);
 
@@ -104,19 +106,19 @@ export function activate(context: vscode.ExtensionContext) {
       }
       if (isFlashing) {
         vscode.window.showErrorMessage(
-          "Wait for ESP-IDF Web flash to finish before disconnect."
+          "Wait for ESP-IDF Web flash to finish before disconnect.",
         );
         return;
       }
       await IDFWebSerialPort.disconnect();
-    }
+    },
   );
   context.subscriptions.push(disposePort);
 
   createStatusBarItems();
   context.subscriptions.push(
     statusBarItems["flash"],
-    statusBarItems["monitor"]
+    statusBarItems["monitor"],
   );
 
   context.subscriptions.push(
@@ -139,12 +141,14 @@ export function activate(context: vscode.ExtensionContext) {
           }
         }
       }
-    })
+    }),
   );
 }
 
 export async function deactivate() {
   await IDFWebSerialPort.disconnect();
+  const outputChnl = getOutputChannel();
+  outputChnl.dispose();
 }
 
 function createStatusBarItems() {
@@ -152,20 +156,23 @@ function createStatusBarItems() {
     `$(zap)`,
     "ESP-IDF-Web Flash",
     "espIdfWeb.flash",
-    94
+    94,
   );
   statusBarItems["monitor"] = createStatusBarItem(
     "$(device-desktop)",
     "ESP-IDF-Web Monitor",
     "espIdfWeb.monitor",
-    93
+    93,
   );
 }
 
 async function getWorkspaceFolder() {
-  if (!vscode.workspace.workspaceFolders) {
+  if (
+    !vscode.workspace.workspaceFolders ||
+    vscode.workspace.workspaceFolders.length === 0
+  ) {
     vscode.window.showInformationMessage(
-      "No workspace folder opened. Open a folder first."
+      "No workspace folder opened. Open a folder first.",
     );
     return;
   }

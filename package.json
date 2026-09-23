@@ -52,6 +52,7 @@
     "soc"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "workspaceContains:**/project_description.json",
     "workspaceContains:**/sdkconfig",
     "workspaceContains:**/CMakeLists.txt"
@@ -84,6 +85,12 @@
       {
         "title": "ESP-IDF Web",
         "properties": {
+          "idfWeb.buildPath": {
+            "type": "string",
+            "default": "",
+            "description": "Build directory for flash and monitor artifacts (flasher_args.json, project_description.json, binary files). Empty uses ${workspaceFolder}/build. Relative values are joined with the workspace folder.",
+            "scope": "resource"
+          },
           "idfWeb.flashBaudRate": {
             "type": "number",
             "default": 921600,
@@ -96,18 +103,34 @@
             "description": "Baud rate for flash command",
             "scope": "window"
           },
+          "idfWeb.monitorBaudRate": {
+            "type": "number",
+            "default": 115200,
+            "enum": [
+              74880,
+              115200
+            ],
+            "description": "Baud rate for monitor when no workspace folder or project_description.json is available",
+            "scope": "window"
+          },
           "idfWeb.enableStatusBarIcons": {
             "type": "boolean",
             "default": true,
             "description": "Show IDF-WEB status bar icons",
             "scope": "application"
+          },
+          "idfWeb.useWebUsbCh340": {
+            "type": "boolean",
+            "default": false,
+            "description": "Select WCH CH340/CH341 adapters with WebUSB so flash can change baud in place. Leave off for CP2102, FTDI, ESP USB-JTAG, and CH343 (CDC).",
+            "scope": "window"
           }
         }
       }
     ]
   },
   "scripts": {
-    "test": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. --extensionTestsPath=dist/web/test/suite/index.js",
+    "test": "node scripts/run-web-tests.js",
     "pretest": "yarn run compile-web",
     "vscode:prepublish": "yarn run package-web",
     "compile-web": "webpack",
@@ -128,7 +151,7 @@
     "@types/webpack-env": "^1.18.5",
     "@typescript-eslint/eslint-plugin": "^7.11.0",
     "@typescript-eslint/parser": "^7.11.0",
-    "@vscode/test-web": "^0.0.60",
+    "@vscode/test-web": "^0.0.81",
     "assert": "^2.1.0",
     "eslint": "^8.57.0",
     "mocha": "^10.4.0",
@@ -143,7 +166,7 @@
   "dependencies": {
     "@types/w3c-web-usb": "^1.0.10",
     "crypto-js": "^4.2.0",
-    "esptool-js": "^0.5.4",
+    "esptool-js": "^0.7.0",
     "web-serial-polyfill": "^1.0.15"
   }
 }
