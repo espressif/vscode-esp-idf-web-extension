@@ -10,7 +10,7 @@ How to use
 3. Install the [ESP-IDF Web Extension](https://marketplace.visualstudio.com/items?itemName=espressif.esp-idf-web) from the Visual Studio Code Marketplace. Make sure that ESP-IDF Web Extension is installed in the Web section of vscode extension tab.
 4. The ESP-IDF Web extension will show a status bar flash icon and a monitor icon.
 5. (OPTIONAL) Press menu **View**, select **Command Palette...** and search for **ESP-IDF-Web Select serial port** command to select the serial port to use. An icon will appear in the status bar with the selected serial port PID and VID ![serialPort](./media/serialPort.png). The currently selected port can be reused for flash and monitor commands until it is disposed.
-6. Run **ESP-IDF-Web Flash** ![flash](./media/flash.png), **ESP-IDF-Web Monitor** ![monitor](./media/monitor.png) or **ESP-IDF-Web Flash and Monitor** commands. The browser will ask you for the serial port to use if not selected before (step 5).
+6. Run **ESP-IDF-Web Flash** ![flash](./media/flash.png), **ESP-IDF-Web Monitor** ![monitor](./media/monitor.png), **ESP-IDF-Web Flash and Monitor** or **ESP-IDF-Web Erase flash** commands. The browser will ask you for the serial port to use if not selected before (step 5).
 7. Run **ESP-IDF-Web Disconnect serial port** or click at the serial port icon in the status bar ![serialPort](./media/serialPort.png) to dispose the current serial port.
 
 You can also configure a github ESP-IDF project for Codespaces with the ESP-IDF Web extension and the ESP-IDF extension installed by adding a `.devcontainer/devcontainer.json` file with the following content:
@@ -71,6 +71,8 @@ Press menu **View**, select **Command Palette...** and search for these commands
 `ESP-IDF-Web Monitor` ![monitor](./media/monitor.png): Start a serial monitor terminal connected to the selected serial port. This command can run without an opened workspace folder. If no serial port was previously selected, it will ask the user for the serial port to use othewise use previously selected serial port.
 
 `ESP-IDF-Web Flash and Monitor`: Flash binaries from selected workspace folder to selected serial port and start a serial monitor terminal to selected serial port. If no serial port was previously selected, it will ask the user for the serial port to use othewise use previously selected serial port.
+
+`ESP-IDF-Web Erase flash`: Erase the entire flash of the device on the selected serial port. If no serial port was previously selected, it will ask the user for the serial port to use othewise use previously selected serial port.
 
 `ESP-IDF-Web Select serial port`: Show the list of available serial ports for previous commands. The selected serial port will saved and shown in the status bar icon and re used by this extension commands.
 
