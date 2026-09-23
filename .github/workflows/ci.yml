@@ -11,6 +11,10 @@ on:
 jobs:
   extension_ci:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: write
+      actions: read
 
     steps:
       - uses: actions/checkout@v4
@@ -18,7 +22,7 @@ jobs:
           submodules: "recursive"
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 24
 
       - name: Install Node Dependencies
         run: yarn
@@ -28,6 +32,14 @@ jobs:
 
       - name: Run test
         run: yarn test
+
+      - name: Publish Test Report
+        uses: dorny/test-reporter@v2
+        if: always()
+        with:
+          name: Mocha Tests
+          path: ./out/results/test-results.json
+          reporter: mocha-json
 
       - name: Package .vsix
         run: yarn package

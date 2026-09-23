@@ -130,7 +130,7 @@
     ]
   },
   "scripts": {
-    "test": "vscode-test-web --browserType=chromium --extensionDevelopmentPath=. --extensionTestsPath=dist/web/test/suite/index.js",
+    "test": "node scripts/run-web-tests.js",
     "pretest": "yarn run compile-web",
     "vscode:prepublish": "yarn run package-web",
     "compile-web": "webpack",
