@@ -17,7 +17,12 @@
  */
 
 import * as vscode from "vscode";
-import { flashAndMonitor, flashWithWebSerial, isFlashing } from "./webserial";
+import {
+  eraseFlash,
+  flashAndMonitor,
+  flashWithWebSerial,
+  isFlashing,
+} from "./webserial";
 import { IDFWebSerialPort } from "./portManager";
 import { createStatusBarItem, getOutputChannel } from "./utils";
 import { IDFWebMonitorTerminal } from "./monitorTerminalManager";
@@ -32,6 +37,12 @@ export function activate(context: vscode.ExtensionContext) {
   const flashDisposable = vscode.commands.registerCommand(
     "espIdfWeb.flash",
     async () => {
+      if (isFlashing) {
+        vscode.window.showErrorMessage(
+          "Wait for ESP-IDF Web flash or erase flash to finish before flash.",
+        );
+        return;
+      }
       if (IDFWebMonitorTerminal.exists()) {
         await IDFWebMonitorTerminal.dispose();
       }
@@ -75,6 +86,12 @@ export function activate(context: vscode.ExtensionContext) {
   const flashMonitorDisposable = vscode.commands.registerCommand(
     "espIdfWeb.flashAndMonitor",
     async () => {
+      if (isFlashing) {
+        vscode.window.showErrorMessage(
+          "Wait for ESP-IDF Web flash or erase flash to finish before flash and monitor.",
+        );
+        return;
+      }
       if (IDFWebMonitorTerminal.exists()) {
         await IDFWebMonitorTerminal.dispose();
       }
@@ -101,19 +118,49 @@ export function activate(context: vscode.ExtensionContext) {
   const disposePort = vscode.commands.registerCommand(
     "espIdfWeb.disposePort",
     async () => {
-      if (IDFWebMonitorTerminal.exists()) {
-        await IDFWebMonitorTerminal.dispose();
-      }
       if (isFlashing) {
         vscode.window.showErrorMessage(
-          "Wait for ESP-IDF Web flash to finish before disconnect.",
+          "Wait for ESP-IDF Web flash or erase flash to finish before disconnecting.",
         );
         return;
+      }
+      if (IDFWebMonitorTerminal.exists()) {
+        await IDFWebMonitorTerminal.dispose();
       }
       await IDFWebSerialPort.disconnect();
     },
   );
   context.subscriptions.push(disposePort);
+
+  const eraseFlashCmd = vscode.commands.registerCommand(
+    "espIdfWeb.eraseFlash",
+    async () => {
+      if (isFlashing) {
+        vscode.window.showErrorMessage(
+          "Wait for ESP-IDF Web flash or erase flash to finish before erasing flash.",
+        );
+        return;
+      }
+      if (IDFWebMonitorTerminal.exists()) {
+        await IDFWebMonitorTerminal.dispose();
+      }
+      let workspaceFolder;
+      if (
+        vscode.workspace.workspaceFolders &&
+        vscode.workspace.workspaceFolders.length > 0
+      ) {
+        workspaceFolder = await getWorkspaceFolder();
+        if (!workspaceFolder) {
+          return;
+        }
+      }
+      const port = await IDFWebSerialPort.init();
+      if (port) {
+        await eraseFlash(port, workspaceFolder?.uri);
+      }
+    },
+  );
+  context.subscriptions.push(eraseFlashCmd);
 
   createStatusBarItems();
   context.subscriptions.push(

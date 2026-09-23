@@ -79,6 +79,10 @@
       {
         "command": "espIdfWeb.disposePort",
         "title": "ESP-IDF-Web Disconnect serial port"
+      },
+      {
+        "command": "espIdfWeb.eraseFlash",
+        "title": "ESP-IDF-Web Erase flash"
       }
     ],
     "configuration": [
