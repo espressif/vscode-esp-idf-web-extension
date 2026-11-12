@@ -143,8 +143,8 @@
     "lint": "eslint src --ext ts",
     "run-in-browser": "yarn compile-web && vscode-test-web --browserType=chromium --extensionDevelopmentPath=.",
     "package": "vsce package --yarn -o esp-idf-web-extension.vsix",
-    "release": "vsce publish --yarn -p ${VS_MARKETPLACE_TOKEN} --packagePath esp-idf-web-extension.vsix",
-    "open-vsx-release": "ovsx publish esp-idf-web-extension.vsix -p ${OPENVSX_MARKETPLACE_TOKEN}"
+    "release": "vsce publish --yarn --packagePath esp-idf-web-extension.vsix --oidc",
+    "open-vsx-release": "ovsx publish esp-idf-web-extension.vsix --trusted-publishing"
   },
   "devDependencies": {
     "@types/assert": "^1.5.10",
@@ -156,14 +156,14 @@
     "@typescript-eslint/eslint-plugin": "^7.11.0",
     "@typescript-eslint/parser": "^7.11.0",
     "@vscode/test-web": "^0.0.81",
+    "@vscode/vsce": "^4.1.0",
     "assert": "^2.1.0",
     "eslint": "^8.57.0",
     "mocha": "^10.4.0",
-    "ovsx": "^0.9.5",
+    "ovsx": "^1.4.0",
     "process": "^0.11.10",
     "ts-loader": "^9.5.1",
     "typescript": "^5.4.5",
-    "vsce": "^2.15.0",
     "webpack": "^5.92.0",
     "webpack-cli": "^5.1.4"
   },
